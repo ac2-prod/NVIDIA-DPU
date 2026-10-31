@@ -23,24 +23,28 @@ ibverbs (RC queue pair, RDMA Write with Immediate). The measured path
 includes the RDMA-buffer page backing (default 4 KiB pages or Transparent Huge
 Pages) and chunk-level overlap between compression and RDMA transfer.
 
-In the paper, the uncompressed RDMA path reaches about 10.9 GB/s with 4 KiB
-pages and about 24.6 GB/s with Transparent Huge Pages. The lossless compressed
+In the paper, for large messages around the 65.7 MB tensor size, the
+uncompressed RDMA path drops to about 10.9 GB/s with 4 KiB pages and recovers
+to about 24.6 GB/s with Transparent Huge Pages. The lossless compressed
 path (byte grouping + LZ4) stays below the uncompressed path in both cases.
 See the paper for the full results and their interpretation.
 
 ## What this directory contains
 
-Most comments in the source files and scripts are written in Japanese.
-Figure numbers that appear in comments, scripts, `plot_paper_figs.py` and
-`MEASUREMENT_GUIDE_RDMA.md` refer to earlier drafts, not to the published
-paper.
+Many comments in the source files and most comments in the scripts are
+written in Japanese. Figure and section numbers that appear in comments,
+scripts, `plot_paper_figs.py` and `MEASUREMENT_GUIDE_RDMA.md` refer to earlier
+versions of this work (drafts, and the SWoPP paper named in the header of
+`plot_paper_figs.py`), not to the published paper. "Issue #N" in comments,
+scripts and `MEASUREMENT_GUIDE_RDMA.md` refers to issue numbers the authors
+used during development.
 
 | Path | Role |
 |---|---|
-| `bf3_deploy/src/benchmark_e2e_rdma.c` | Two-rank (MPI) end-to-end benchmark. It covers uncompressed RDMA, compressed serial, and compressed chunk-level overlap, with 4 KiB or THP-backed buffers. It writes one CSV row per timed iteration with per-stage times. The paper's Figs. 6, 7 and 8 were measured with this program at commit `e125de3` of the authors' development repository; this file is identical to that version (see [REPRODUCING.md](REPRODUCING.md#2-provenance-of-the-code)). |
+| `bf3_deploy/src/benchmark_e2e_rdma.c` | Two-rank (MPI) end-to-end benchmark. It covers uncompressed RDMA, compressed serial, and compressed chunk-level overlap, with 4 KiB or THP-backed buffers. It writes one CSV row per timed iteration with per-stage times. The measurement data for the paper's Figs. 6, 7 and 8 record commit `e125de3` of the authors' development repository; this file is identical to the version at that commit (see [REPRODUCING.md](REPRODUCING.md#2-provenance-of-the-code)). |
 | `bf3_deploy/src/rdma_transport.c`, `rdma_transport.h` | Minimal RC-QP RDMA Write-with-Immediate transport over libibverbs. MPI is used only for connection setup and synchronization. |
 | `bf3_deploy/src/netzip.c`, `netzip.h` | bfloat16 preprocessing transforms and their inverses: byte grouping, bit grouping, integer delta with byte grouping (lossless), and float difference with byte grouping (lossy). |
-| `bf3_deploy/src/benchmark_generalization.c` | Codec screening over a set of tensor files: four preprocessing modes × LZ4, Snappy and Zstd. The paper's screening (Fig. 1) was measured with this program at commit `42c75b6`; this file is identical to that version. |
+| `bf3_deploy/src/benchmark_generalization.c` | Codec screening over a set of tensor files: four preprocessing modes × LZ4, Snappy and Zstd. The measurement data for the paper's screening (Fig. 1) record commit `42c75b6`; this file is identical to the version at that commit. |
 | `bf3_deploy/src/rdma_sanity.c` | RDMA Write bandwidth check with and without huge pages. |
 | `bf3_deploy/src/benchmark_omp_scaling.c`, `benchmark_idiff_compare.c`, `benchmark_diff_error.c`, `benchmark_pipeline.c`, `netzip_delta.c` | Benchmarks and helper code from the development of the paper. They are not used for the published figures. |
 | `benchmark_decompress.c` | Decompression benchmark from the development of the paper. It cannot be built from this repository (see [REPRODUCING.md](REPRODUCING.md#4-build)). |
@@ -48,8 +52,8 @@ paper.
 | `bf3_deploy/src/Makefile` | Build rules. |
 | `bf3_deploy/build_rdma.sh`, `build_generalization.sh`, `build_idiff.sh` | SLURM build scripts written for the cluster used in the paper. |
 | `bf3_deploy/run_*.sh` (15 scripts) | SLURM run scripts used during development. [REPRODUCING.md](REPRODUCING.md#65-run-scripts-in-this-repository) lists what each one runs. |
-| `bf3_deploy/src/plot_paper_figs.py` | Plot script for an earlier draft. It does not draw the figures of the published paper. |
-| `bf3_deploy/MEASUREMENT_GUIDE_RDMA.md` | Development measurement log (Japanese). Its numbers, figure numbers and conclusions predate the published paper and are not part of it. "Issue #N" refers to the authors' internal tracker. |
+| `bf3_deploy/src/plot_paper_figs.py` | Plot script for an earlier version of this work (its header names the SWoPP paper). It does not draw the figures of the published paper. |
+| `bf3_deploy/MEASUREMENT_GUIDE_RDMA.md` | Development measurement log (Japanese). Its numbers, figure numbers and conclusions predate the published paper and are not part of it. |
 
 ## What this directory does not contain
 
@@ -98,6 +102,9 @@ used in the paper, the output format, and what is missing for a full re-run.
   and measurement results created in this study): CC BY 4.0. No data files
   are listed at present.
 - Bundled LZ4 and xxHash files keep their own BSD 2-Clause License.
+- `bf3_deploy/src/netzip.c` and `netzip.h` implement the NetZIP preprocessing
+  transforms and are also subject to the MIT License of the NetZIP artifact
+  (see [LICENSING.md](../LICENSING.md)).
 
 See also the repository-level [LICENSING.md](../LICENSING.md).
 

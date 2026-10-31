@@ -20,6 +20,9 @@
 
 このディレクトリのファイルは、著者の開発用ツリーのコピーとして、2026-06-22 にこのリポジトリへ
 コミットされました（commit `0128b40`）。
+スクリプトの既定のパス（`$HOME/MICRO-2025-NetZIP/netzip_c/...`）は、著者の開発用ツリー（`netzip_c/`）を指しています。
+この開発用ツリーは、NetZIP アーティファクト（<https://github.com/ece-fast-lab/MICRO-2025-NetZIP>）をローカルに clone した
+ディレクトリの中に置いていました。`netzip_c/` は同アーティファクトの一部ではありません。
 
 論文の図のもとになった測定データには、そのデータを生成した開発用リポジトリのコミットが
 `commit_hash` 列に記録されています。図 6、7、8 は `e125de3`、図 1 は `42c75b6` です。
@@ -97,6 +100,15 @@ Zstandard と Snappy をリンクするプログラムは、`-Wall -O3 -funroll-
 
 引数なしで `make` を実行すると既定のターゲット `all` がビルドされ、ソースの多くがないため失敗します。
 ターゲットは必ず指定してください。
+
+図 1 には、Zstandard 1.5.7 と Snappy 1.1.9 のソースを `bf3_deploy/deps/` に置き、`bf3_deploy/src/` で
+`make benchmark_generalization` を実行します（クラスタでは、`bf3_deploy/` から `bf3_deploy/build_generalization.sh` を
+`sbatch` で投入します）。`bf3_deploy/build_idiff.sh` は `benchmark_idiff_compare` をビルドし、`benchmark_e2e_rdma` を
+ビルドし直します。
+Snappy 1.1.9 のソースには `snappy-stubs-public.h` が含まれていません。このファイルは Snappy の CMake の設定が
+`snappy-stubs-public.h.in` から生成するもので、`Makefile` は `-I../deps/snappy-1.1.9` を加えるだけです。著者が
+`bf3_deploy/deps/` をどう準備したかは記録がなく、確認していません。また、ここにある `Makefile` は commit `42c75b6` の
+ものと異なります（2 節）。
 
 ## 5. 入力データ
 
@@ -202,7 +214,7 @@ mpirun -np 2 --map-by ppr:1:node --bind-to none \
 スクリプトはすべて、論文で使ったクラスタ向けの SLURM のジョブスクリプトです。パーティション、
 ノード名、`MODULEPATH` を設定しています。テンソルを読むスクリプトの既定のデータパスは、
 著者のホームディレクトリ以下か、`bf3_deploy/src/` からの相対パス（`../../bf3_data`）です。
-使う前に書き換えてください。コメント中の図番号は以前の草稿のものです。
+使う前に書き換えてください。コメントと表示文の図番号は、この研究の以前の版（草稿と SWoPP 論文）のものです。
 
 | スクリプト | 実行する内容 | 出力（`bf3_deploy/src/` に作成） |
 |---|---|---|
@@ -242,6 +254,11 @@ E2E のスクリプトは `--iters 10 --warmup 3` を渡しており、どれも
 
 論文は end-to-end の結果について「5 回のウォームアップのあと 50 回の計測反復の中央値」と
 記載しています。ウォームアップの回数は出力に記録されません。
+
+`benchmark_generalization` の引数は `[--out CSV] [--iters N] [--warmup N] [--sub-kb K] FILE...` です
+（既定値は `results_generalization.csv`、5、2、256）。スレッド数は `OMP_NUM_THREADS` に従います。最後の完全なタイルより
+後ろの端数バイトは処理しません。タイルの大きさが 16 バイトの倍数でないと、`bit_group` は飛ばされます
+（状態は `skip:bit_group_needs_16x`）。
 
 以下は、上のオプションから組み立てた、4 KiB ページでの図 8 の実行例です（THP では `--thp 1`）。
 `DATA` は 65,667,072 バイト以上の bfloat16 の生データで、両ノードの同じパスに置きます。
@@ -312,7 +329,7 @@ omp_threads,sub_bytes,nsub,commit_hash,timestamp,status
   `t_decompress_ms`、`t_restore_ms`）。
 - 図 8：`median` 行の `throughput_gbps`。
 
-`bf3_deploy/src/plot_paper_figs.py` は、以前の草稿の作図スクリプトです。`bf3_deploy/src/` の
+`bf3_deploy/src/plot_paper_figs.py` は、この研究の以前の版の作図スクリプトです（冒頭に SWoPP 論文用とあります）。`bf3_deploy/src/` の
 CSV ファイル（たとえば `results_rdma_sanity.csv`、`results_msgsize_sweep.csv`、
 `results_final_showdown.csv`、`results_e2e_breakdown.csv`、`results_generalization.csv`、
 `results_omp_scaling.csv`）を読み、`bf3_deploy/src/figs/` に PNG と PDF を書きます。
@@ -343,6 +360,10 @@ matplotlib を入れた Python が必要です。その図は主に非可逆の 
 - 4 KiB ページでの実行では、プログラムは `smaps` を確認しません。その確認が必要な場合は、
   `/proc/<pid>/smaps` の `AnonHugePages` を自分で確認してください。
 - `make clean` は `../deps` 以下のオブジェクトファイルも削除します。
+- `--thp 1` には、`/sys/kernel/mm/transparent_hugepage/enabled` が `[always]` か `[madvise]` である必要があります。
+  そうでないと `page_mode` は `thp_no_2m` と記録されます。`[always]` のときは `--thp 0` のバッファにもヒュージページが
+  使われ得ますが、プログラムは `base_4k` と記録します。`run_rdma_sanity.sh` と `run_final_showdown.sh` はこの設定を表示します。
+- 論文の `osu_bw` の数値には OSU Micro-Benchmarks が必要です。このリポジトリには含まれていません。
 
 ### 論文とこのリポジトリの相違点
 
@@ -356,6 +377,16 @@ matplotlib を入れた Python が必要です。その図は主に非可逆の 
 | 前処理の既定値 | 評価した方式はバイトグループ化＋LZ4 | `--preproc` の既定値は非可逆の `diff_byte`。`--preproc byte_group` の指定が必要です |
 | メッセージサイズの既定値（コメント） | — | `benchmark_e2e_rdma.c` 冒頭のコメントには既定値がファイルサイズとありますが、コードは常に 65667072 を使います |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` は `make all` で `benchmark_omp_scaling` がビルドされるように書いていますが、`all` ターゲットには含まれておらず、`all` のソースも不足しています |
+| `diff_byte` をほぼ可逆とする記述 | 評価していない。論文が評価するのは、ビットが完全に一致する方式（バイトグループ化、ビットグループ化、整数差分＋バイトグループ化）だけです | `netzip.c`、`netzip.h`、`benchmark_e2e_rdma.c`、`benchmark_idiff_compare.c`、`benchmark_generalization.c`、`run_generalization.sh`、`run_idiff_e2e.sh`、`run_lossless_compare.sh`、`run_lossless_e2e.sh`、`MEASUREMENT_GUIDE_RDMA.md` のコメントと表示文は、非可逆の `diff_byte` を、誤差が「1 ULP」や「±1 ULP」、あるいは「near-lossless」と書いています。`MEASUREMENT_GUIDE_RDMA.md` の「§3.6」の節は、`diff_byte` の誤差が ±1 ULP に全く収まらないと書いています。ただし同節はその数値を x86（スカラー、最近接偶数丸め）での予備測定とし、BF3 の NEON 経路は切り捨て丸めなので測り直しが必要と書いています |
+| 4 KiB の崖の原因 | アドレス変換の粒度と関係し、RNIC 側のアドレス変換の負荷と整合的。MTT ミスの回数は数えていません | `benchmark_e2e_rdma.c` と `MEASUREMENT_GUIDE_RDMA.md` は、原因を NIC の MTT ミスと書いています。`rdma_sanity.c` の表示文は、ヒュージページで回復すれば原因は NIC の MTT ミスである、と判定します |
+| 圧縮が無圧縮 RDMA を上回るか | 65.7 MB の E2E では、可逆のバイトグループ化＋LZ4 は 4 KiB ページでも THP でも無圧縮を下回ります（overlap で、4 KiB は 8.9 対 10.9 GB/s、THP は 9.3 対 24.6 GB/s） | `MEASUREMENT_GUIDE_RDMA.md`、`run_final_showdown.sh`、`run_lossless_e2e.sh`、`run_idiff_e2e.sh` には、圧縮が「勝てる」、ある実行が「主結果」といった開発中の見立てが残っています。そこでの圧縮の数値の多くは、非可逆の `diff_byte` で測ったものです |
+| 低速・共有リンク | 実効帯域が約 9 GB/s を大きく下回る共有・混雑リンクでは、可逆圧縮の競争力が増し得る。交差点の定量化は今後の課題 | `run_sharedlink.sh`、`plot_paper_figs.py`、`MEASUREMENT_GUIDE_RDMA.md` は、帯域を制限した測定で可逆圧縮が無圧縮に勝つことを示したと書いています。この測定は、ペーシング（`--rate-limit-gbps`）で遅いリンクを模擬したものです |
+| 標準出力のまとめの表記 | — | `benchmark_e2e_rdma` の標準出力のまとめは、`--preproc` に関係なく、圧縮ありの実行をすべて `lz4+diff_byte` と表示します。実際に使った前処理は CSV の `preproc` 列に記録されます |
+| 図番号と節番号 | — | コメント、実行スクリプトの表示文、`plot_paper_figs.py`、`MEASUREMENT_GUIDE_RDMA.md` にある図番号と節番号（たとえば「Fig 2/7/8」「§3.6」）はこの研究の以前の版（草稿と SWoPP 論文）のもので、出版された論文の番号ではありません |
+| 圧縮チャンクの転送（overlap 経路） | 各チャンクを RDMA Write with Immediate で転送（3.4 節、表 1） | `--zerocopy 1` では、各チャンクを、空でないタイルごとの通知なしの RDMA Write と、サイズのヘッダを運ぶ通知ありの RDMA Write with Immediate 1 回で送ります（`benchmark_e2e_rdma.c` の `post_send_chunk`） |
+
+コメント、表示文、`MEASUREMENT_GUIDE_RDMA.md` は開発中に書いたもので、そのまま残しています。
+論文と食い違う箇所は、論文の記述に従ってください。
 
 ## 11. 完全な再実行に足りないもの
 
@@ -370,4 +401,6 @@ BF3 の実機で測定し直すには：
 - 図 6、7、8 の設定そのものを使った実行スクリプト（設定は 6.6 節に記載）。
 - `benchmark_generalization` 用の Zstandard 1.5.7 と Snappy 1.1.9 のソース。
 - ツールチェーンとシステムライブラリの正確なバージョン（3 節）。
-- 図 1 については、commit `42c75b6` 時点の `Makefile`（2 節）。
+- 図 1 については、commit `42c75b6` 時点の `Makefile`（2 節）と、著者が `bf3_deploy/deps/` をどう準備したか（4 節）。
+- `osu_bw`（OSU Micro-Benchmarks）の実行スクリプトと結果。
+- 図 6、7 で使ったウォームアップの回数（出力に記録されていません）。

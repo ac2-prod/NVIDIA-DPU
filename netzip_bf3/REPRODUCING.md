@@ -23,6 +23,11 @@ written, because no BlueField-3 hardware was available for that purpose.
 
 The files in this directory were committed to this repository on 2026-06-22
 (commit `0128b40`), as a copy of the authors' development tree.
+The default paths in the scripts (`$HOME/MICRO-2025-NetZIP/netzip_c/...`)
+point to the authors' development tree (`netzip_c/`), which was kept inside a
+local clone of the NetZIP artifact
+(<https://github.com/ece-fast-lab/MICRO-2025-NetZIP>). `netzip_c/` is not part of that
+artifact.
 
 The measurement data behind the paper's figures record the commit of the
 development repository that produced them, in the `commit_hash` column:
@@ -108,6 +113,17 @@ repository. The program also calls functions that are not defined in
 
 Running a bare `make` builds the default target `all`, which fails because most
 of its sources are missing. Always name the targets.
+
+For Fig. 1, place the Zstandard 1.5.7 and Snappy 1.1.9 sources under
+`bf3_deploy/deps/` and run `make benchmark_generalization` in
+`bf3_deploy/src/` (on the cluster, submit `bf3_deploy/build_generalization.sh`
+from `bf3_deploy/` with `sbatch`). `bf3_deploy/build_idiff.sh` builds
+`benchmark_idiff_compare` and rebuilds `benchmark_e2e_rdma`.
+The Snappy 1.1.9 source tree does not contain `snappy-stubs-public.h`; Snappy's
+CMake configuration generates it from `snappy-stubs-public.h.in`, and the
+`Makefile` only adds `-I../deps/snappy-1.1.9`. How the authors prepared
+`bf3_deploy/deps/` is not recorded and was not verified. The `Makefile` here
+also differs from the one at commit `42c75b6` (Section 2).
 
 ## 5. Input data
 
@@ -224,7 +240,8 @@ All scripts are SLURM job scripts for the cluster used in the paper. They set a
 partition, node names and `MODULEPATH`. The scripts that read tensors use
 default data paths either under the authors' home directory or relative to
 `bf3_deploy/src/` (`../../bf3_data`). Adapt these before use. Figure numbers in their comments
-refer to earlier drafts.
+and console messages refer to earlier versions of this work (drafts and the
+SWoPP paper).
 
 | Script | What it runs | Output (in `bf3_deploy/src/`) |
 |---|---|---|
@@ -266,6 +283,13 @@ included) and stated in the paper.
 The paper states "median over 50 timed iterations after five warm-up
 iterations" for the end-to-end results. The warm-up count is not recorded in
 the output.
+
+`benchmark_generalization` takes
+`[--out CSV] [--iters N] [--warmup N] [--sub-kb K] FILE...`
+(defaults `results_generalization.csv`, 5, 2 and 256).
+The number of threads follows `OMP_NUM_THREADS`. Bytes after the last full
+tile are not processed, and `bit_group` is skipped (status
+`skip:bit_group_needs_16x`) when the tile size is not a multiple of 16 bytes.
 
 Example invocations for Fig. 8 with 4 KiB pages, assembled from the options
 above (use `--thp 1` for THP). `DATA` is a raw bfloat16 file of at least
@@ -341,7 +365,8 @@ the authors' plotting scripts (not included), the plotted quantities are:
   `t_decompress_ms`, `t_restore_ms`) of the `median` rows.
 - Fig. 8: `throughput_gbps` of the `median` rows.
 
-`bf3_deploy/src/plot_paper_figs.py` is the plot script of an earlier draft. It
+`bf3_deploy/src/plot_paper_figs.py` is the plot script of an earlier version of
+this work (its header names the SWoPP paper). It
 reads CSV files from `bf3_deploy/src/` (for example `results_rdma_sanity.csv`,
 `results_msgsize_sweep.csv`, `results_final_showdown.csv`,
 `results_e2e_breakdown.csv`, `results_generalization.csv`,
@@ -378,6 +403,13 @@ file in this repository.
   `AnonHugePages` in `/proc/<pid>/smaps` yourself if you need that
   confirmation.
 - `make clean` also deletes object files under `../deps`.
+- For `--thp 1`, `/sys/kernel/mm/transparent_hugepage/enabled` must be
+  `[always]` or `[madvise]`; otherwise `page_mode` is recorded as
+  `thp_no_2m`. With `[always]`, the `--thp 0` buffers can also be backed by
+  huge pages, while the program still records `base_4k`.
+  `run_rdma_sanity.sh` and `run_final_showdown.sh` print this setting.
+- The paper's `osu_bw` numbers need the OSU Micro-Benchmarks, which are not
+  part of this repository.
 
 ### Differences between the paper and this repository
 
@@ -391,6 +423,17 @@ file in this repository.
 | Preprocessing default | Byte grouping + LZ4 is the evaluated method | Default `--preproc` is the lossy `diff_byte`; `--preproc byte_group` must be given |
 | Default message size (comment) | — | The header comment of `benchmark_e2e_rdma.c` says the default is the file size; the code always uses 65667072 |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` suggests that `make all` builds `benchmark_omp_scaling`; the `all` target does not include it, and the sources of `all` are missing |
+| `diff_byte` described as near-lossless | Not evaluated. The paper evaluates only bit-exact modes (byte grouping, bit grouping, and integer delta with byte grouping) | Comments and messages in `netzip.c`, `netzip.h`, `benchmark_e2e_rdma.c`, `benchmark_idiff_compare.c`, `benchmark_generalization.c`, `run_generalization.sh`, `run_idiff_e2e.sh`, `run_lossless_compare.sh`, `run_lossless_e2e.sh` and `MEASUREMENT_GUIDE_RDMA.md` describe the lossy `diff_byte` as having a "1 ULP" or "±1 ULP" error, or as "near-lossless". Section "§3.6" of `MEASUREMENT_GUIDE_RDMA.md` reports that the error of `diff_byte` is far beyond ±1 ULP; it describes these numbers as a preliminary measurement on x86 (scalar, round-to-nearest-even) and notes that the BF3 NEON path truncates and needs re-measurement |
+| Cause of the 4 KiB cliff | Related to address-translation granularity and consistent with RNIC-side address-translation pressure. MTT misses were not counted | `benchmark_e2e_rdma.c` and `MEASUREMENT_GUIDE_RDMA.md` state that the cause is NIC MTT misses. The messages of `rdma_sanity.c` treat recovery with huge pages as showing that the cause is NIC MTT misses |
+| Whether compression beats uncompressed RDMA | In the 65.7 MB E2E runs, lossless byte grouping + LZ4 stays below uncompressed RDMA with both 4 KiB pages and THP (overlapped: 8.9 vs. 10.9 GB/s with 4 KiB pages, 9.3 vs. 24.6 GB/s with THP) | `MEASUREMENT_GUIDE_RDMA.md`, `run_final_showdown.sh`, `run_lossless_e2e.sh` and `run_idiff_e2e.sh` contain expectations written during development, for example that compression would win ("勝てる") or that a run is a main result ("主結果"). Most of the compressed numbers there were measured with the lossy `diff_byte` |
+| Slow or shared links | Lossless compression may become more competitive on links whose effective bandwidth is well below about 9 GB/s, such as shared or congested links; quantifying the crossover is future work | `run_sharedlink.sh`, `plot_paper_figs.py` and `MEASUREMENT_GUIDE_RDMA.md` describe the rate-limited measurement as showing that lossless compression beats uncompressed RDMA. That measurement emulates a slower link by pacing (`--rate-limit-gbps`) |
+| Console summary label | — | The stdout summary of `benchmark_e2e_rdma` prints `lz4+diff_byte` for every compressed run, whatever `--preproc` is. The `preproc` column of the CSV records the mode actually used |
+| Figure and section numbers | — | Figure and section numbers in comments, in the console messages of the run scripts, in `plot_paper_figs.py` and in `MEASUREMENT_GUIDE_RDMA.md` (for example "Fig 2/7/8" and "§3.6") follow earlier versions of this work (drafts and the SWoPP paper), not the published numbering |
+| Transfer of a compressed chunk (overlapped path) | Each chunk is transferred with RDMA Write with Immediate (Section 3.4, Table 1) | With `--zerocopy 1`, each chunk is sent as one unsignaled RDMA Write per non-empty tile, followed by one signaled RDMA Write with Immediate that carries the size header (`post_send_chunk` in `benchmark_e2e_rdma.c`) |
+
+The comments, console messages and `MEASUREMENT_GUIDE_RDMA.md` were written
+during development and are kept as they were. Where they disagree with the
+paper, follow the paper.
 
 ## 11. What is missing for a complete re-run
 
@@ -406,4 +449,7 @@ To re-measure on BF3 hardware:
   lists the settings).
 - The Zstandard 1.5.7 and Snappy 1.1.9 sources for `benchmark_generalization`.
 - The exact versions of the toolchain and system libraries (Section 3).
-- For Fig. 1, the `Makefile` as of commit `42c75b6` (Section 2).
+- For Fig. 1, the `Makefile` as of commit `42c75b6` (Section 2), and how the
+  authors prepared `bf3_deploy/deps/` (Section 4).
+- The `osu_bw` (OSU Micro-Benchmarks) run scripts and results.
+- The warm-up counts used for Figs. 6 and 7 (not recorded in the output).

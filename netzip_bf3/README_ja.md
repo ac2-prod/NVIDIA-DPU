@@ -22,22 +22,23 @@ BF3 間の通信経路として測定します。測定する経路には、RDMA
 （既定の 4 KiB ページか Transparent Huge Pages）と、圧縮と RDMA 転送のチャンク単位の
 重ね合わせ（overlap）が含まれます。
 
-論文では、無圧縮の RDMA 経路は 4 KiB ページで約 10.9 GB/s、Transparent Huge Pages で
-約 24.6 GB/s でした。可逆圧縮の経路（バイトグループ化＋LZ4）は、どちらの場合も無圧縮の経路を
+論文では、65.7 MB のテンソル程度の大きなメッセージで、無圧縮の RDMA 経路は 4 KiB ページでは
+約 10.9 GB/s に低下し、Transparent Huge Pages では約 24.6 GB/s に回復しました。可逆圧縮の経路（バイトグループ化＋LZ4）は、どちらの場合も無圧縮の経路を
 下回りました。結果の全体とその解釈は論文を参照してください。
 
 ## このディレクトリに含まれるもの
 
-ソースファイルとスクリプトのコメントの多くは日本語です。コメント、スクリプト、
-`plot_paper_figs.py`、`MEASUREMENT_GUIDE_RDMA.md` に出てくる図番号は以前の草稿のもので、
-公開された論文の図番号ではありません。
+ソースファイルのコメントの多くと、スクリプトのコメントのほとんどは日本語です。コメント、スクリプト、
+`plot_paper_figs.py`、`MEASUREMENT_GUIDE_RDMA.md` に出てくる図番号と節番号は、この研究の以前の版
+（草稿と、`plot_paper_figs.py` の冒頭に名前のある SWoPP 論文）のもので、公開された論文の番号ではありません。
+コメント、スクリプト、`MEASUREMENT_GUIDE_RDMA.md` に出てくる「Issue #N」は、開発中に著者が使っていた Issue の番号です。
 
 | パス | 役割 |
 |---|---|
-| `bf3_deploy/src/benchmark_e2e_rdma.c` | 2 ランク（MPI）の end-to-end ベンチマーク。無圧縮 RDMA、圧縮の逐次版、圧縮のチャンク単位 overlap 版を、4 KiB または THP のバッファで測定します。計測した反復ごとに、段ごとの時間を含む CSV 行を 1 行書きます。論文の図 6、7、8 は、著者の開発用リポジトリの commit `e125de3` 時点のこのプログラムで測定しました。このファイルはその版と同一です（[REPRODUCING_ja.md](REPRODUCING_ja.md#2-コードの来歴) を参照）。 |
+| `bf3_deploy/src/benchmark_e2e_rdma.c` | 2 ランク（MPI）の end-to-end ベンチマーク。無圧縮 RDMA、圧縮の逐次版、圧縮のチャンク単位 overlap 版を、4 KiB または THP のバッファで測定します。計測した反復ごとに、段ごとの時間を含む CSV 行を 1 行書きます。論文の図 6、7、8 の測定データには、著者の開発用リポジトリの commit `e125de3` が記録されています。このファイルはその commit の版と同一です（[REPRODUCING_ja.md](REPRODUCING_ja.md#2-コードの来歴) を参照）。 |
 | `bf3_deploy/src/rdma_transport.c`、`rdma_transport.h` | libibverbs を使い、RC QP 上の RDMA Write with Immediate でデータを送る最小限の転送層。MPI は接続の確立と同期にのみ使います。 |
 | `bf3_deploy/src/netzip.c`、`netzip.h` | bfloat16 の前処理変換とその逆変換：バイトグループ化、ビットグループ化、整数差分＋バイトグループ化（可逆）、浮動小数点差分＋バイトグループ化（非可逆）。 |
-| `bf3_deploy/src/benchmark_generalization.c` | テンソルファイル群に対するコーデックの選定測定：4 種の前処理 × LZ4、Snappy、Zstd。論文の選定（図 1）は、commit `42c75b6` 時点のこのプログラムで測定しました。このファイルはその版と同一です。 |
+| `bf3_deploy/src/benchmark_generalization.c` | テンソルファイル群に対するコーデックの選定測定：4 種の前処理 × LZ4、Snappy、Zstd。論文の選定（図 1）の測定データには commit `42c75b6` が記録されています。このファイルはその commit の版と同一です。 |
 | `bf3_deploy/src/rdma_sanity.c` | ヒュージページの有無による RDMA Write 帯域の確認。 |
 | `bf3_deploy/src/benchmark_omp_scaling.c`、`benchmark_idiff_compare.c`、`benchmark_diff_error.c`、`benchmark_pipeline.c`、`netzip_delta.c` | 論文の開発過程で使ったベンチマークと補助コード。公開された図には使っていません。 |
 | `benchmark_decompress.c` | 論文の開発過程で使った伸長ベンチマーク。このリポジトリだけではビルドできません（[REPRODUCING_ja.md](REPRODUCING_ja.md#4-ビルド) を参照）。 |
@@ -45,8 +46,8 @@ BF3 間の通信経路として測定します。測定する経路には、RDMA
 | `bf3_deploy/src/Makefile` | ビルド規則。 |
 | `bf3_deploy/build_rdma.sh`、`build_generalization.sh`、`build_idiff.sh` | 論文で使ったクラスタ向けに書いた SLURM のビルドスクリプト。 |
 | `bf3_deploy/run_*.sh`（15 本） | 開発中に使った SLURM の実行スクリプト。それぞれが何を実行するかは [REPRODUCING_ja.md](REPRODUCING_ja.md#65-このリポジトリの実行スクリプト) にあります。 |
-| `bf3_deploy/src/plot_paper_figs.py` | 以前の草稿の作図スクリプト。公開された論文の図は描きません。 |
-| `bf3_deploy/MEASUREMENT_GUIDE_RDMA.md` | 開発中の測定記録（日本語）。中の数値、図番号、結論は公開された論文より前のもので、論文の一部ではありません。「Issue #N」は著者の内部の管理番号です。 |
+| `bf3_deploy/src/plot_paper_figs.py` | この研究の以前の版の作図スクリプト（冒頭に SWoPP 論文用とあります）。公開された論文の図は描きません。 |
+| `bf3_deploy/MEASUREMENT_GUIDE_RDMA.md` | 開発中の測定記録（日本語）。中の数値、図番号、結論は公開された論文より前のもので、論文の一部ではありません。 |
 
 ## このディレクトリに含まれないもの
 
@@ -92,6 +93,8 @@ make rdma_sanity benchmark_e2e_rdma
 - [LICENSE-DATA.md](LICENSE-DATA.md) に記載したデータファイル（本研究で作成した実験データ・
   測定結果）：CC BY 4.0。現時点では記載されたデータファイルはありません。
 - 同梱した LZ4 と xxHash のファイルは、元の BSD 2-Clause License のままです。
+- `bf3_deploy/src/netzip.c` と `netzip.h` は NetZIP の前処理の変換を実装したもので、NetZIP アーティファクトの
+  MIT License も適用されます（[LICENSING.md](../LICENSING.md) を参照）。
 
 リポジトリ全体の [LICENSING.md](../LICENSING.md) も参照してください。
 
