@@ -1,6 +1,6 @@
 // benchmark_idiff_compare.c — Issue #4/#5: 4 前処理の lossless 比較
 //   byte_group (純並べ替え, lossless) / bit_group (純並べ替え, lossless) /
-//   diff_byte (float, lossy ±1ULP) / idiff_byte (整数 diff, lossless)
+//   diff_byte (float, lossy; 誤差は ±1ULP に収まらない) / idiff_byte (整数 diff, lossless)
 // ─────────────────────────────────────────────────────────────────────────────
 // 同条件 (16 スレッド, 256KB サブチャンク連続割当, run_direct 準拠) で:
 //   - LZ4 圧縮率
@@ -34,7 +34,7 @@
 #define MAX_ITERS 64
 
 // 4 前処理: byte_group/bit_group は純粋な並べ替え (lossless), diff_byte は float
-// (±1ULP lossy), idiff_byte は整数 diff (lossless)。byte/bit は shift 不要。
+// (lossy; 誤差は ±1ULP に収まらない), idiff_byte は整数 diff (lossless)。byte/bit は shift 不要。
 enum { PRE_BYTE_GROUP = 0, PRE_BIT_GROUP, PRE_DIFF_BYTE, PRE_IDIFF_BYTE, PRE_N };
 static const char *pre_name[] = { "byte_group", "bit_group", "diff_byte", "idiff_byte" };
 
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
         "gbps_preproc,gbps_compress,gbps_decompress,gbps_restore,"
         "omp_threads,sub_bytes,iters,commit_hash,timestamp\n");
 
-    printf("=== idiff_byte (bit-exact) vs diff_byte (float, ±1ULP) ===\n");
+    printf("=== idiff_byte (bit-exact) vs diff_byte (float, lossy) ===\n");
     printf("threads=%d sub=%zuKB iters=%d warmup=%d\n\n", g_nth, g_sub_bytes/1024, iters, warmup);
 
     for (int fi = 0; fi < nfiles; fi++) {

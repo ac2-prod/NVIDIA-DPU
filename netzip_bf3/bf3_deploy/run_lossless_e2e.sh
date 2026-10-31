@@ -3,7 +3,8 @@
 #   final showdown の best 構成 (--thp 1, overlap=1, chunk=4M, zerocopy=1) を
 #   --preproc byte_group と --preproc bit_group で各 1 本測り results_final_showdown.csv に追記。
 #   どちらも純粋な並べ替え ⇒ verify=EXACT (完全可逆) であること。
-#   strict lossless で THP 無圧縮(24.6) / 4KB 無圧縮(10.9) を上回るかを見る。
+#   strict lossless の throughput を THP 無圧縮(24.6) / 4KB 無圧縮(10.9) と比べる。
+#   注: 論文の結論は、可逆の byte grouping＋LZ4 では 4 KiB・THP のどちらでも無圧縮を下回る、である (THP・overlap で約 9.3 GB/s)。
 # 使い方: sbatch run_lossless_e2e.sh [datafile]
 #SBATCH -p rome
 #SBATCH --nodelist=romebf3a005,romebf3a006
@@ -53,6 +54,6 @@ awk -F, '
       g("t_preproc_ms"), g("t_compress_ms"), g("throughput_gbps")
   }' $OUT | tail -6
 echo ""
-echo "判定: byte_group / bit_group が verify=EXACT。throughput が"
-echo "      THP 無圧縮 24.6 / 4KB 無圧縮 10.9 / near-lossless(diff_byte 19.3) のどこか。"
-echo "      24.6 を超えれば strict lossless でも勝てる主結果候補。"
+echo "確認: byte_group / bit_group が verify=EXACT であること。throughput を"
+echo "      THP 無圧縮 24.6 / 4KB 無圧縮 10.9 / 非可逆の diff_byte 19.3 と比べる。"
+echo "      (論文の結論: 可逆の byte grouping＋LZ4 は 4 KiB・THP のどちらでも無圧縮を下回る。)"

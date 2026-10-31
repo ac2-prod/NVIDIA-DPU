@@ -2,6 +2,7 @@
 # run_e2e_breakdown.sh — 測定1: E2E 時間内訳 (論文 Fig 8 用)
 #   圧縮あり/なし × 一括(65.7MB)/4MiBチャンク × 逐次/オーバーラップ を
 #   フェーズ分解付きで計測し results_e2e_breakdown.csv に追記する。
+#   注: このスクリプトは --preproc を指定しないので、圧縮あり (--compress 1) の行は既定の diff_byte (非可逆、論文の評価対象外) で測る。
 # 使い方: sbatch run_e2e_breakdown.sh [datafile]
 #SBATCH -p rome
 #SBATCH --nodelist=romebf3a005,romebf3a006

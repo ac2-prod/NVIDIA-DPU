@@ -34,10 +34,10 @@ BF3 間の通信経路として測定します。測定する経路には、RDMA
 
 | パス | 役割 |
 |---|---|
-| `bf3_deploy/src/benchmark_e2e_rdma.c` | 2 ランク（MPI）の end-to-end ベンチマーク。無圧縮 RDMA、圧縮の逐次版、圧縮のチャンク単位 overlap 版を、4 KiB または THP のバッファで測定します。計測した反復ごとに、段ごとの時間を含む CSV 行を 1 行書きます。論文の図 6、7、8 は、著者の開発用リポジトリの commit `e125de3` 時点のこのプログラムで測定しました。このファイルはその版と同一です（[REPRODUCING_ja.md](REPRODUCING_ja.md#2-コードの来歴) を参照）。 |
+| `bf3_deploy/src/benchmark_e2e_rdma.c` | 2 ランク（MPI）の end-to-end ベンチマーク。無圧縮 RDMA、圧縮の逐次版、圧縮のチャンク単位 overlap 版を、4 KiB または THP のバッファで測定します。計測した反復ごとに、段ごとの時間を含む CSV 行を 1 行書きます。論文の図 6、7、8 は、著者の開発用リポジトリの commit `e125de3` 時点のこのプログラムで測定しました。後から論文に合わせて直したコメントを除き、このファイルはその版と同一です（[REPRODUCING_ja.md](REPRODUCING_ja.md#2-コードの来歴) を参照）。 |
 | `bf3_deploy/src/rdma_transport.c`、`rdma_transport.h` | libibverbs を使い、RC QP 上の RDMA Write with Immediate でデータを送る最小限の転送層。MPI は接続の確立と同期にのみ使います。 |
 | `bf3_deploy/src/netzip.c`、`netzip.h` | bfloat16 の前処理変換とその逆変換：バイトグループ化、ビットグループ化、整数差分＋バイトグループ化（可逆）、浮動小数点差分＋バイトグループ化（非可逆）。 |
-| `bf3_deploy/src/benchmark_generalization.c` | テンソルファイル群に対するコーデックの選定測定：4 種の前処理 × LZ4、Snappy、Zstd。論文の選定（図 1）は、commit `42c75b6` 時点のこのプログラムで測定しました。このファイルはその版と同一です。 |
+| `bf3_deploy/src/benchmark_generalization.c` | テンソルファイル群に対するコーデックの選定測定：4 種の前処理 × LZ4、Snappy、Zstd。論文の選定（図 1）は、commit `42c75b6` 時点のこのプログラムで測定しました。後から論文に合わせて直したコメントを除き、このファイルはその版と同一です。 |
 | `bf3_deploy/src/rdma_sanity.c` | ヒュージページの有無による RDMA Write 帯域の確認。 |
 | `bf3_deploy/src/benchmark_omp_scaling.c`、`benchmark_idiff_compare.c`、`benchmark_diff_error.c`、`benchmark_pipeline.c`、`netzip_delta.c` | 論文の開発過程で使ったベンチマークと補助コード。公開された図には使っていません。 |
 | `benchmark_decompress.c` | 論文の開発過程で使った伸長ベンチマーク。このリポジトリだけではビルドできません（[REPRODUCING_ja.md](REPRODUCING_ja.md#4-ビルド) を参照）。 |

@@ -1,17 +1,19 @@
 // benchmark_e2e_rdma.c (v6) — フェーズ分解計時付き E2E ベンチマーク (ibverbs RDMA / MPI)
 // ─────────────────────────────────────────────────────────────────────────────
 // 目的: 「単体30 GB/s の圧縮が E2E では何 GB/s 出ているか」を直接測る (論文 Fig 2,7,8)。
+//   ※ 30 GB/s は開発初期の lz4+diff_byte (非可逆) の単体値。論文の可逆構成 (byte grouping+LZ4)
+//     の送信側圧縮経路は元バイト換算で約 9 GB/s で、E2E はどちらのページ構成でも無圧縮を下回る。
 //
 //   rank 0 (送信): [preproc+LZ4 (fused, 16T)] → [pack memcpy] → [RDMA Write post] → [CQE]
 //   rank 1 (受信): [recv CQE 待ち] → [LZ4伸長+restore (fused, 16T)] → verify
 //
 // フェーズ分解 (1回の圧縮あり通信):
-//   1 preproc      diff_byte 変換          (fused 領域 wall をスレッド毎実測時間比で按分)
+//   1 preproc      前処理 (--preproc)      (fused 領域 wall をスレッド毎実測時間比で按分)
 //   2 compression  LZ4 本体                (同上)
 //   3 rdma_post    ibv_post_send 発行までの時間
 //   4 completion   post 後 CQE 取得まで = 実転送時間 (overlap=1 では「隠れなかった残り」)
 //   5 decompression LZ4 伸長               (fused 領域を按分)
-//   6 restore      diff_byte 逆変換        (同上)
+//   6 restore      前処理の逆変換          (同上)
 //   7 pack         圧縮サブチャンク → wire バッファへの memcpy (copy/staging)
 //   8 total        wall (LLC追い出し時間は除外)。sum(1..7) との差 = unaccounted
 //
@@ -41,9 +43,11 @@
 //                      を 2MB 境界 posix_memalign + madvise(MADV_HUGEPAGE) で確保 [0]。
 //                      実際に 2MB 化されたかを smaps の AnonHugePages で検出し
 //                      CSV の page_mode 列に記録 (thp_madvise / thp_no_2m / base_4k / mixed)。
-//                      背景: 4KB ページでは 65.7MB ≈ 16k MTT エントリで NIC の
-//                      アドレス変換キャッシュが溢れ raw 帯域が 24.7→11 GB/s に落ちる
+//                      背景: 4KB ページでは 65.7MB ≈ 16k ページ (MTT エントリ) になり
+//                      raw 帯域が 24.7→11 GB/s に落ちる
 //                      (THP で崖が消えることを rdma_sanity --hugepages で確認済み)。
+//                      崖はアドレス変換の粒度と関係し RNIC 側のアドレス変換負荷と整合的だが、
+//                      MTT ミスのカウンタは直接観測していない (キャッシュ溢れの直接証拠ではない)。
 //   --zerocopy 0|1     1 = pack 排除 (ゼロコピー)。LZ4 出力を直接 wire スロットの
 //                      LZ4_compressBound 固定オフセットへ書く (t_pack=0)。
 //                      転送はサブチャンク毎の実バイトのみを個別 RDMA Write し、
@@ -59,7 +63,7 @@
 //                      真の領域 wall。
 //   --pre-threads N    非 fused 時の preproc 領域のスレッド数 (LZ4 領域は常に全数)。
 //                      N < OMP_NUM_THREADS 指定で非 fused compress を強制 [0=全数]
-//   --preproc NAME     diff_byte (float,±1ULP lossy,既定) | idiff_byte (整数 diff,lossless)
+//   --preproc NAME     diff_byte (float,lossy,既定。誤差は ±1ULP に収まらない) | idiff_byte (整数 diff,lossless)
 //                      | byte_group (純並べ替え,lossless) | bit_group (純並べ替え,lossless)。
 //                      lossless 3 種は verify が memcmp 完全一致 (EXACT) を要求する。
 //   --iters N / --warmup N                                        [10 / 3]
@@ -99,7 +103,7 @@ typedef struct {
     int    compress, overlap, iters, warmup, flush_iter;
     int    cold_send, cold_recv, lockstep, thp;
     int    zerocopy, phase_shift, pre_threads;
-    // 前処理: diff_byte=float lossy(±1ULP); 他 3 つは lossless (memcmp 完全一致)。
+    // 前処理: diff_byte=float lossy (誤差は ±1ULP に収まらない); 他 3 つは lossless (memcmp 完全一致)。
     // diff_byte のみ shift(find_min) を使う。
     int    preproc;                 // PRE_DIFF_BYTE / PRE_IDIFF_BYTE / PRE_BYTE_GROUP / PRE_BIT_GROUP
     double rate_gbps;               // 実効リンク帯域の上限 (leaky-bucket pacing); 0=無制限
@@ -1028,7 +1032,8 @@ int main(int argc, char **argv) {
                     float e = fabsf(bf16_to_fp32(g_dst[i]) - bf16_to_fp32(g_ref[i]));
                     if (e > maxerr) maxerr = e;
                 }
-            // diff_byte は truncation 丸めで ~1ULP の差を許容 (v5 と同じ基準)
+            // diff_byte は非可逆 (bit 一致しない。誤差は ±1ULP に収まらない)。ここは絶対誤差
+            // maxerr<1.0 だけを見る緩い判定 (v5 と同じ基準) で、OK は lossless を意味しない
             snprintf(verify, sizeof verify, "%s",
                      g_decomp_err ? "FAIL" : (maxerr < 1.0 ? "OK" : "FAIL"));
             if (g_decomp_err || maxerr >= 1.0)

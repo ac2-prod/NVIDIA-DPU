@@ -1,8 +1,10 @@
 #!/bin/bash
 # run_final_showdown.sh — 最終対決 v2: 送信側CPU削減 (pack排除 + preproc競合緩和)
 #
-#   前回結果: 圧縮 best 19.1 GB/s < THP ベースライン 24.6 GB/s。
-#   送信側 CPU (preproc+comp+pack ≈ 3.1ms) を 2.2ms まで削れば 30 GB/s で勝てる。
+#   前回結果: 圧縮 best 19.1 GB/s (lz4+diff_byte, 非可逆) < THP ベースライン 24.6 GB/s。
+#   送信側 CPU (preproc+comp+pack ≈ 3.1ms) を削る最適化の効果を測る (当時は 2.2ms まで削れば 30 GB/s と見積もった)。
+#   注: このスクリプトは --preproc を指定しないので、lz4 行は既定の diff_byte (非可逆、論文の評価対象外) で測る。
+#   注: 論文の結論は、可逆の byte grouping＋LZ4 では 4 KiB・THP のどちらでも無圧縮を下回る、である。
 #
 #   最適化:
 #     --zerocopy 1    pack 排除。LZ4 出力を直接 wire スロット (bound 固定オフセット) へ
@@ -15,7 +17,7 @@
 #     --pre-threads 12 (2b) preproc だけ 12 スレッドに絞り帯域の食い合いを減らす
 #                     (LZ4 は 16 のまま; phase-shift が効かない場合のフォールバック)
 #
-#   判定: lz4 行の best throughput_gbps > 24.6 GB/s (THP 無圧縮ベースライン)
+#   比較: lz4 行の throughput_gbps を 24.6 GB/s (THP 無圧縮ベースライン) と比べる
 #
 # 使い方: sbatch run_final_showdown.sh [datafile]
 #SBATCH -p rome
@@ -52,7 +54,7 @@ MPIRUN="mpirun -np 2 --map-by ppr:1:node --bind-to none \
   -x NETZIP_IB_DEV=mlx5_0"
 BIN="./benchmark_e2e_rdma --data $DATA --out $OUT --msg-size 65667072 --thp 1 --iters 10 --warmup 3"
 
-# A) THP ベースライン (無圧縮一括) — 判定基準値 (≈24.6 GB/s)
+# A) THP ベースライン (無圧縮一括) — 比較基準値 (≈24.6 GB/s)
 echo "===== A: baseline no-compress (THP) ====="
 $MPIRUN $BIN --compress 0
 
@@ -100,6 +102,6 @@ awk -F, '
       g("t_completion_ms"), g("throughput_gbps"), foot
   }' $OUT
 echo ""
-echo "判定: lz4 行の best throughput > 24.6 GB/s (A 行) なら送信側CPU削減で勝利"
+echo "比較: lz4 行の throughput を A 行 (THP 無圧縮, 約 24.6 GB/s) と比べる"
 echo "見方: zc=1 で t_pack=0 / ps=1 で t_preproc が 46GB/s 相当 (4M:0.18ms, 8M:0.36ms) に"
-echo "      回復していれば DMA 競合説が確定。foot は zerocopy のリモート footprint 膨張率。"
+echo "      回復していれば DMA 競合説と整合的。foot は zerocopy のリモート footprint 膨張率。"

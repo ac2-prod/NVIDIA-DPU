@@ -4,7 +4,7 @@
 // 3 コーデックの LZ4 圧縮率・各フェーズスループット・bit-exact を測る。
 //
 //   前処理: byte_group / bit_group (純並べ替え, lossless) /
-//           diff_byte (float, ±1ULP lossy) / idiff_byte (整数 diff, lossless)
+//           diff_byte (float, lossy; 誤差は ±1ULP に収まらない) / idiff_byte (整数 diff, lossless)
 //   コーデック: lz4 (block, 主役) / snappy / zstd-3 (Fig3 Pareto 用)
 //
 // 計時: 各フェーズ独立 OMP 領域 + clock_gettime(MONOTONIC), 16T, 256KB サブチャンク

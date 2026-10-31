@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_omp_scaling.sh — 論文 Fig4 (スレッドスケーリング) / Fig5 (スレッド別フェーズ内訳)
-#   lm_head 65.7MB を diff_byte+LZ4 (主役) と none+snappy (対照) で、
+#   lm_head 65.7MB を diff_byte+LZ4 (開発時の主対象。非可逆で論文の評価には入っていない) と none+snappy (対照) で、
 #   スレッド数 1,2,4,8,16 を振り各フェーズの時間/スループット/speedup/efficiency を測る。
 #   16T・256KB サブチャンク・DRAM write 込み・warmup3+iters7 の median (既存と同条件)。
 #   ※ 単体処理なので RDMA 不要・1 ノード。MPI 不要。

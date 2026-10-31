@@ -1,5 +1,9 @@
 # RDMA E2E 計測ガイド (測定0〜3, Fig 2/7/8 用)
 
+> 注：これは開発中の測定ログである。論文が評価するのはビット完全一致の可逆モード (byte_group /
+> bit_group / idiff_byte＝integer-delta＋byte grouping) だけで、diff_byte は非可逆 (復元誤差は
+> ±1 ULP に収まらない。§3.6) のため論文の評価に入っていない。本ログが論文と食い違う箇所は論文を正とする。
+
 目的: 「単体 30 GB/s の lz4+diff_byte が E2E では 5.69 < 11 GB/s で負ける理由」を
 フェーズ分解 (測定1)・メッセージサイズ sweep (測定2)・cache hot/cold (測定3) で説明する。
 転送は ibverbs RC QP + RDMA Write with Immediate (測定0で実装)。
@@ -183,17 +187,19 @@ CSV のヘッダが現スキーマと違う場合 `<name>.old.<unixtime>` へ自
     `[always]` か `[madvise]` であること (`[never]` だと base_4k のまま →
     管理者に THP 有効化を依頼)。
 - 判定:
-  - **65.7M warm/cold が ~24 GB/s に回復** → 崖の原因は NIC のアドレス変換
-    キャッシュ (MTT) ミス。4KB ページでは 65.7MB = 約16,000 MTT エントリで
-    キャッシュ溢れ、2MB ページでは ~32 エントリで常駐。
-  - **~11 GB/s のまま** → MTT ではなく DRAM 帯域律速 (LLC に収まらないバッファの
-    streaming read が原因)。4M warm が 24 のままで大サイズだけ落ちる形が維持される。
+  - **65.7M warm/cold が ~24 GB/s に回復** → 崖はアドレス変換の粒度と関係し、
+    RNIC 側のアドレス変換 (MTT) の負荷と整合的 (MTT ミスのカウンタは直接観測していない)。
+    4KB ページでは 65.7MB = 約16,000 MTT エントリ、2MB ページでは ~32 エントリ。
+  - **~11 GB/s のまま** → アドレス変換以外 (DRAM 帯域など) の律速を疑う (当時は LLC に収まらないバッファの
+    streaming read を想定)。4M warm が 24 のままで大サイズだけ落ちる形が維持される。
+    （注：実際は THP で回復したので、この分岐には当たらない）
   - 副次指標: `mr_reg_ms` (ページ数が 1/512 になるので hugepages で大きく短縮するはず)。
 
 ## 最終対決「THP 対 THP」 (run_final_showdown.sh)
 
 **確定済みの前提 (rdma_sanity --hugepages の結果)**: THP(2MB) で崖が完全に消え、
-全サイズ 24.7 GB/s。→ 崖の正体は NIC アドレス変換 (MTT) ミスであり DRAM 律速ではない。
+全サイズ 24.7 GB/s。→ 崖はアドレス変換の粒度と関係し、RNIC 側のアドレス変換 (MTT) の負荷と
+整合的。CPU のデータキャッシュ容量が原因ではない (MTT ミスのカウンタは直接観測していない)。
 
 そこで「ベースラインが 24.7 GB/s に回復した土俵で圧縮はまだ勝てるか」を測る:
 
@@ -213,6 +219,9 @@ sbatch run_final_showdown.sh     # → src/results_final_showdown.csv
 - **判定**: lz4 行の best `throughput_gbps` >
   無圧縮 thp_madvise 行 (≈24.7) → **hugepages 適用後もなお圧縮で線速超え** (主結果)。
   超えなければ → **圧縮の利益は 4KB ページ環境 (= デフォルト設定) 限定** が結論。
+  （注：この判定の lz4 行は非可逆の diff_byte による。論文の結論は、可逆の byte grouping＋LZ4
+  では overlap でも 4 KiB で約 8.9 GB/s (無圧縮 10.9)、THP で約 9.3 GB/s (無圧縮 24.6) にとどまり、
+  どちらのページ構成でも無圧縮を下回る、である）
 - 注: chunk=32M は 2 チャンク (32MiB + 30.6MB) しかなく overlap がほぼ効かない。
   立ち上がりコスト ≈ 先頭チャンクの圧縮時間 = chunk/46GB/s なので、
   期待値は throughput ≈ msg / (first_chunk_comp + max(comp, xfer) 残り) で粗く見積れる。
@@ -220,7 +229,11 @@ sbatch run_final_showdown.sh     # → src/results_final_showdown.csv
 ## 最終対決 v2: 送信側 CPU 削減 (run_final_showdown.sh, 2026-06-13 更新)
 
 前回: 圧縮 best 19.1 < THP ベースライン 24.6 GB/s。送信側 CPU
-(preproc+comp+pack ≈ 3.1ms) を 2.2ms に削れば 30 GB/s で勝てる。2 つの最適化:
+(preproc+comp+pack ≈ 3.1ms) を 2.2ms に削れば 30 GB/s で勝てる。
+（注：この 19.1 と本節の lz4 行、「勝てる」の見立ては非可逆の diff_byte による。論文では、可逆で
+最良の byte grouping＋LZ4 は送信側の圧縮経路が元バイト換算で約 9 GB/s にとどまり、THP では
+overlap でも約 9.3 GB/s で無圧縮 24.6 GB/s を下回る）
+2 つの最適化:
 
 - **`--zerocopy 1` (pack 排除)**: LZ4 出力を直接 wire スロットの
   `LZ4_compressBound` 固定オフセットへ書く → `t_pack = 0`。
@@ -250,7 +263,7 @@ C) pre-threads 12 (zc=1) × ps {0,1} × chunk {4M,8M}。ジョブ末尾に awk �
 **判定**: lz4 行の best throughput > 24.6 GB/s (A 行) →
 「hugepages 環境でも送信側 CPU 削減により圧縮が線速超え」。
 診断の見方: zc=1 で t_pack=0 になっているか / ps=1 で t_preproc が回復するか
-(回復すれば DMA 競合説確定、しなければ preproc 低下は別要因 = LLC 競合等) /
+(回復すれば DMA 競合説と整合的、しなければ preproc 低下は別要因 (LLC 競合等) を疑う) /
 foot 膨張率が想定 (≈圧縮率倍) 通りか。
 
 ## 論文図の生成 (src/plot_paper_figs.py → src/figs/)
@@ -265,6 +278,8 @@ python3 plot_paper_figs.py              # figs/ に PNG(300dpi) + PDF を生成
   LLC 32MB 縦線 + 200Gb/s 線速横線。
 - Fig 7 (`fig7_e2e_throughput`): sweep CSV → 無圧縮/圧縮直列/圧縮overlap の3系列 +
   THP 基準線 (showdown の none 行)。クロスオーバー (~29 MB) を自動計算して注記。
+  （注：sweep の圧縮系列は非可逆の diff_byte で、このクロスオーバーは 4KB 無圧縮に対するもの。
+  論文の評価対象外。論文では 65.7 MB の E2E で、可逆の byte grouping＋LZ4 は 4 KiB・THP のどちらでも無圧縮を下回る）
 - Fig 3 (`fig3_pareto`): 圧縮率 vs 圧縮スループット Pareto (results_generalization.csv,
   5076 ok 行)。全点を preproc 別色で半透明散布 + (preproc×codec) 毎の中央値マーカー12点
   (色=preproc, 形=codec)。**lossless 3種(byte/bit/idiff)=塗りつぶし、diff_byte(lossy)=中抜き**で
@@ -274,6 +289,8 @@ python3 plot_paper_figs.py              # figs/ に PNG(300dpi) + PDF を生成
   未測定**のため breakdown の 4KB 行で代替し脚注表示 (THP で測るなら:
   `mpirun ... ./benchmark_e2e_rdma --data ... --thp 1 --compress 1` を1本流して
   results_final_showdown.csv に追記すれば自動で差し替わる)。
+  （注：この図の圧縮バーは非可逆の diff_byte (図中の表記も lossy) で、上の「未測定」も diff_byte の行のこと。
+  論文の評価対象外。論文では 65.7 MB の E2E で、可逆の byte grouping＋LZ4 の逐次は 4 KiB で約 4.6 GB/s、THP で約 5.5 GB/s）
 - CSV はスキーマ世代混在 → 列名アクセス + 既定値補完。median 行のみ、
   重複条件は timestamp 最新を採用。使った行は stdout に全て表示される。
 
@@ -291,6 +308,10 @@ python3 plot_paper_figs.py              # figs/ に PNG(300dpi) + PDF を生成
   上書きして BF3 側が壊れる)。
 
 ## Issue #10: 低速/共有リンクで lossless 圧縮が無圧縮に勝つ
+
+（注：見出しと本節の「勝つ」「上回る」は開発中の理論と見立て。論文は、実効帯域が約 9 GB/s を
+大きく下回る共有・混雑リンクでは可逆の経路が有利になり得るとしたうえで、この交差点の実験的な
+定量化を今後の課題としている）
 
 THP 環境では無圧縮 24.6 で圧縮は負けるが、実運用のリンク共有・低速リンクで実効帯域が
 線速を下回ると、strict-lossless の byte_group が無圧縮を上回る。理論:
@@ -315,6 +336,7 @@ cd src && python3 plot_paper_figs.py   # → figs/fig_sharedlink.{png,pdf}
   byte_group は verify=EXACT（strict lossless）であること。
 - Fig (`fig_sharedlink`): x=実効帯域(=無圧縮E2E), y=E2E。byte_group が無圧縮を上回る領域
   (b<~9.3) を網掛け + crossover 注記。**lossyに頼らない前向きな成果**（理論一致 ~9.3 GB/s）。
+  （注：論文ではこの交差点は未定量化＝今後の課題。本節冒頭の注を参照）
 
 ## §3.6: diff_byte 復元誤差の大きさ (ULP / 相対 / 絶対)
 
@@ -359,6 +381,7 @@ shift スケールで載るため、小さい勾配値の **相対/ULP 精度が
 16 Arm コアの並列が各フェーズにどう効くかを定量化し「並列は必要だが十分でない
 (前処理局所性・復元・メモリ帯域で頭打ち)」を示す。lm_head 65.7MB を diff_byte+LZ4
 (主役) と none+snappy (対照: スケールするが無圧縮) で、スレッド数 1,2,4,8,16 を振る。
+（注：diff_byte は非可逆で論文の評価対象外。論文が評価するのは可逆モードだけである）
 
 ```bash
 sbatch build_generalization.sh    # benchmark_omp_scaling も make all/このtarget で
@@ -429,12 +452,15 @@ sbatch run_lossless_e2e.sh
 ```
 
 判定: ① byte_group/bit_group が verify=EXACT、② 圧縮率と E2E が
-near-lossless(diff_byte 1.98 / 19.3) と strict(idiff_byte 1.32 / 8.16) の間のどこか、
+非可逆(diff_byte 1.98 / 19.3) と strict(idiff_byte 1.32 / 8.16) の間のどこか、
 ③ byte_group の E2E が THP 無圧縮 24.6 や 4KB 無圧縮 10.9 を上回れば主結果候補。
+（注：論文の結論は、可逆の byte grouping＋LZ4 は逐次で 4.6 / 5.5 GB/s、overlap で 8.9 / 9.3 GB/s
+(4 KiB / THP) にとどまり、どちらのページ構成でも無圧縮 10.9 / 24.6 GB/s を下回る、である）
 
 ## Issue #5: idiff_byte (整数, bit-exact lossless) vs diff_byte (float, ±1ULP)
 
-現行 diff_byte は浮動小数の算術 diff で復元時 ±1 ULP の丸め (77.8% の要素が lossy)。
+現行 diff_byte は浮動小数の算術 diff で非可逆 (77.8% の要素が lossy。見出しの「±1ULP」は当時の
+表現で、実際の復元誤差は ±1 ULP に収まらない。§3.6)。
 idiff_byte は入力を生 uint16 列とみなしサブチャンク内で `d[i]=x[i]-x[i-1] (mod 2^16)`
 → byte grouping、逆変換は累積和。整数演算のみ → round-trip 完全可逆 (memcmp 一致)。
 shift (netzip_find_min) は float ドメインの処理なので整数版では不要・未使用。
@@ -452,6 +478,8 @@ sbatch run_idiff_compare.sh        # 1 ノードでよい (MPI 不要)
 sbatch run_idiff_e2e.sh            # 2 ノード
 ```
 
+（注：task 4 の「lossless 主結果」は当時の位置付け。論文で最良の可逆構成は byte grouping＋LZ4 である）
+
 - `benchmark_idiff_compare [--out CSV] [--iters N] [--warmup N] [--sub-kb K] file...`:
   16T・256KB サブチャンク連続割当 (run_direct 準拠)、各フェーズを独立領域で計時
   (DRAM write 込み)、warmup 後 median。各行に bit_exact / mismatch_bytes /
@@ -462,6 +490,8 @@ sbatch run_idiff_e2e.sh            # 2 ノード
 - **完了判定**: ① idiff 行が全て bit_exact=yes / verify=EXACT、
   ② comp_ratio が diff_byte 比でどれだけ落ちるか (1.9 前後維持なら採用)、
   ③ 各フェーズ速度が diff_byte 同等か。
+  （注：「採用」の基準は非可逆の diff_byte を目安にした当時のもの。idiff_byte の圧縮率は 1.32 でこの基準に届かなかった。
+  論文は idiff_byte を bit-exact の 3 前処理の一つとして選定測定に含め、最良の可逆構成を byte grouping＋LZ4 としている）
 
 ## MPI フォールバック (ibverbs がどうしても動かない場合)
 
@@ -474,6 +504,8 @@ sbatch run_idiff_e2e.sh            # 2 ノード
    MPI 専用バイナリをビルド (`--transport mpi` のみ受け付ける)。
 
 ## 完了条件チェックリスト
+
+（注：以下は開発時の作業リストを記録として残したもので、読者が行う未完了の作業ではない）
 
 1. [ ] サニティ合格 (4M warm ≈24 / 60M級 ≈11 GB/s, data verify PASS)
 2. [ ] `results_e2e_breakdown.csv` (圧縮あり/なし × 一括/4MiB × 逐次/overlap)

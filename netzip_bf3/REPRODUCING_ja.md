@@ -30,9 +30,13 @@
 
 - 図 6、7、8：`bf3_deploy/src/` の `benchmark_e2e_rdma.c`、`rdma_transport.c`、
   `rdma_transport.h`、`netzip.c`、`netzip.h`、`lz4.c`、`lz4.h`、`Makefile` は、commit `e125de3` の
-  版と同一です。
-- 図 1：`benchmark_generalization.c`、`netzip.c`、`netzip.h` は、commit `42c75b6` の版と同一です。
+  版と同一でした。
+- 図 1：`benchmark_generalization.c`、`netzip.c`、`netzip.h` は、commit `42c75b6` の版と同一でした。
   ここにある `Makefile` には、そのコミットの後に加えた行があります（13 行追加、1 行削除）。
+
+この比較の後、論文と合うように、`benchmark_e2e_rdma.c`、`netzip.c`、`netzip.h`、
+`benchmark_generalization.c` のコメントだけを直しました（たとえば、`diff_byte` は非可逆であること）。
+コメント以外のコードは変えていません。変更はこのリポジトリの Git の履歴で確認できます。
 
 このディレクトリのプログラムを Git のチェックアウトの中で実行すると、同じ列には、その
 チェックアウトの現在の `HEAD`（`git rev-parse --short HEAD`）が記録されます
@@ -354,6 +358,7 @@ matplotlib を入れた Python が必要です。その図は主に非可逆の 
 | キャッシュの追い出し | 記載なし | 既定で各反復の前に最終レベルキャッシュを追い出します（`--flush-iter 1`、計時の外） |
 | チャンク分割 | 65.7 MB のバッファを 4 MiB の RDMA チャンクに分割（主構成では 16 チャンク） | 記録されたデータでは、4 MiB のチャンクを使うのは overlap の実行だけです。図 8 の無圧縮と逐次版の実行は、65,667,072 バイトの 1 チャンクです |
 | 前処理の既定値 | 評価した方式はバイトグループ化＋LZ4 | `--preproc` の既定値は非可逆の `diff_byte`。`--preproc byte_group` の指定が必要です |
+| 標準出力のまとめの表記 | — | `benchmark_e2e_rdma` の標準出力のまとめは、`--preproc` に関係なく、圧縮ありの実行をすべて `lz4+diff_byte` と表示します。実際に使った前処理は CSV の `preproc` 列に記録されます |
 | メッセージサイズの既定値（コメント） | — | `benchmark_e2e_rdma.c` 冒頭のコメントには既定値がファイルサイズとありますが、コードは常に 65667072 を使います |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` は `make all` で `benchmark_omp_scaling` がビルドされるように書いていますが、`all` ターゲットには含まれておらず、`all` のソースも不足しています |
 

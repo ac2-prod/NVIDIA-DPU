@@ -98,7 +98,9 @@ void netzip_byte_delta_encode(const uint8_t* input, size_t num_bytes, uint8_t* o
  * @brief Fused diff_encode + byte_group in a single NEON pass.
  *
  * Halves DRAM traffic vs two-pass (read once, write once).
- * Uses truncation rounding (1 ULP error, acceptable for compression preprocessing).
+ * Uses truncation rounding when narrowing the fp32 difference to bf16 (up to 1 ULP
+ * of the difference value). The round trip is therefore lossy: the restored tensor
+ * is not bit-exact, and its error is not bounded to +/-1 ULP of the original value.
  *
  * @param input     Input bf16 array (uint16_t)
  * @param num_elements  Number of elements
@@ -134,7 +136,8 @@ void netzip_diff_byte_group_serial(const uint16_t* input, size_t num_elements,
  *
  * OMP parallel 内から呼ぶ用。team-creation overhead なし。
  * input layout (= diff_byte_group の出力): [low_bytes (num_elements) | high_bytes (num_elements)]
- * 各要素を 16bit に再結合し、bf16 として shift_val を加算して元の bf16 を復元する。
+ * 各要素を 16bit に再結合し、bf16 として shift_val を加算して元の bf16 を近似復元する
+ * (非可逆: bit 一致せず、誤差は ±1 ULP に収まらない)。
  *
  * @param input     byte-grouped + diff-encoded 入力 (num_elements*2 bytes)
  * @param num_elements  要素数
