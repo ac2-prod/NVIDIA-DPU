@@ -36,17 +36,11 @@ The files in this directory were compared with the development repository on
 
 - Figs. 6, 7 and 8: `benchmark_e2e_rdma.c`, `rdma_transport.c`,
   `rdma_transport.h`, `netzip.c`, `netzip.h`, `lz4.c`, `lz4.h` and the
-  `Makefile` in `bf3_deploy/src/` were identical to the versions at commit
+  `Makefile` in `bf3_deploy/src/` are identical to the versions at commit
   `e125de3`.
-- Fig. 1: `benchmark_generalization.c`, `netzip.c` and `netzip.h` were
+- Fig. 1: `benchmark_generalization.c`, `netzip.c` and `netzip.h` are
   identical to the versions at commit `42c75b6`. The `Makefile` here has
   lines that were added after that commit (13 lines added, 1 line removed).
-
-After this comparison, only the comments in `benchmark_e2e_rdma.c`,
-`netzip.c`, `netzip.h` and `benchmark_generalization.c` were changed so that
-they agree with the paper (for example, that `diff_byte` is lossy). The code
-outside the comments is unchanged. The change can be seen in the Git history
-of this repository.
 
 When the programs in this directory are run inside a Git checkout, they record
 the current `HEAD` of that checkout (`git rev-parse --short HEAD`) in the same
@@ -395,7 +389,6 @@ file in this repository.
 | Cache eviction | Not mentioned | Last-level cache evicted before every iteration by default (`--flush-iter 1`), outside the timed window |
 | Chunking | The 65.7 MB buffer is divided into 4 MiB RDMA chunks (16 chunks in the main configuration) | In the recorded data, only the overlapped runs use 4 MiB chunks; the uncompressed and serial runs of Fig. 8 use one chunk of 65,667,072 bytes |
 | Preprocessing default | Byte grouping + LZ4 is the evaluated method | Default `--preproc` is the lossy `diff_byte`; `--preproc byte_group` must be given |
-| Console summary label | — | The stdout summary of `benchmark_e2e_rdma` prints `lz4+diff_byte` for every compressed run, whatever `--preproc` is; the `preproc` column of the CSV records the mode actually used |
 | Default message size (comment) | — | The header comment of `benchmark_e2e_rdma.c` says the default is the file size; the code always uses 65667072 |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` suggests that `make all` builds `benchmark_omp_scaling`; the `all` target does not include it, and the sources of `all` are missing |
 

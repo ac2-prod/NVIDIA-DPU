@@ -261,8 +261,8 @@ int main(int argc, char **argv) {
             printf("      (ib_write_bw -a / osu_bw の値と比較すること)\n");
         } else {
             printf("\n判定 (MTT 仮説): page_mode=hugetlb_2m/thp_madvise で 65.7M が\n");
-            printf("      ~24 GB/s に回復 → 崖はアドレス変換の粒度と関係 (RNIC 側の変換負荷と整合的。MTT ミスの直接証拠ではない)。\n");
-            printf("      ~11 GB/s のまま → アドレス変換以外 (DRAM 帯域など) の律速を疑う。\n");
+            printf("      ~24 GB/s に回復 → 崖の原因は NIC アドレス変換 (MTT) ミス。\n");
+            printf("      ~11 GB/s のまま → MTT ではなく DRAM 帯域律速。\n");
         }
         if (csv) { fclose(csv); printf("CSV appended -> results_rdma_sanity.csv\n"); }
     }

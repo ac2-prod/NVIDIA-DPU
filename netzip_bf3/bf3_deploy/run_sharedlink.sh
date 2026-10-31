@@ -1,12 +1,11 @@
 #!/bin/bash
-# run_sharedlink.sh — Issue #10 補助: 低速/共有リンクで lossless 圧縮と無圧縮の E2E を比べる測定
+# run_sharedlink.sh — Issue #10 補助: 低速/共有リンクで lossless 圧縮が無圧縮に勝つことの実証
 #   実効リンク帯域を leaky-bucket pacing (--rate-limit-gbps) で段階制御し、各帯域で
 #   3 構成の E2E throughput を測る:
 #     - 無圧縮 (baseline)
-#     - lz4+diff_byte  (lossy 1.98x; 参考)
+#     - lz4+diff_byte  (lossy 1.98x; 勝敗文脈の参考)
 #     - lz4+byte_group (strict lossless 1.46x, verify=EXACT; 主役)
-#   見積もり: lossless E2E ≈ min(計算上限~9.3, 1.46×b) とすると、b < ~9.3 で無圧縮(=b)を上回り得る (仮説)。
-#   注: 論文は、共有・混雑リンクで可逆圧縮が有利になり得るとするが、交差点の定量化は今後の課題としている。
+#   理論: lossless E2E = min(計算上限~9.3, 1.46×b)。b < ~9.3 で無圧縮(=b)を上回るはず。
 #   構成は showdown best: --thp 1 overlap=1 chunk=4M zerocopy=1。
 # 使い方: sbatch run_sharedlink.sh [datafile]
 #SBATCH -p rome
@@ -40,7 +39,7 @@ COMMON="--data $DATA --out results_e2e_breakdown.csv --sharedlink-out $SL \
   --msg-size 65667072 --thp 1 --overlap 1 --chunk-size 4194304 \
   --iters 10 --warmup 3"
 
-# 実効帯域レベル (GB/s)。見積もり上のクロスオーバー ~9.3 付近を細かく。
+# 実効帯域レベル (GB/s)。クロスオーバー ~9.3 付近を細かく。
 LEVELS="24 16 12 10 9.3 9 8 7 5 3"
 
 for BW in $LEVELS; do

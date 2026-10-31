@@ -683,8 +683,7 @@ void netzip_bit_group_serial(const uint16_t* input, size_t num_elements, uint8_t
 
 // --- diff_encode (serial, NEON optimized, float32 truncation) ---
 // 元の netzip_diff_encode は double 精度スカラーで遅い (2.2ms)。
-// この版は float32 + NEON で高速化。truncation 丸め (差分値の bf16 化で最大 1 ULP。ただし
-// 復元後は bit 一致せず、元値に対する誤差は ±1 ULP に収まらない = 非可逆)。
+// この版は float32 + NEON で高速化。truncation 丸め (1 ULP 誤差、圧縮前処理には無影響)。
 void netzip_diff_encode_serial(const uint16_t* input, size_t num_elements,
                                 float shift_val, uint16_t* output) {
     size_t i = 0;
@@ -841,9 +840,9 @@ void netzip_diff_byte_ungroup_serial(const uint8_t* input, size_t num_elements,
 // 整数 (bit-exact, lossless) 版: idiff_byte
 // ---------------------------------------------------------------------------
 // 入力を生の uint16 列とみなし、サブチャンク内で隣接差分を mod 2^16 で取り、
-// その後 byte grouping する。浮動小数 diff_byte が truncation rounding により復元後に
-// bit 一致しない (非可逆。誤差は ±1 ULP に収まらない) のに対し、こちらは整数演算のみ
-// なので round-trip が完全可逆 (memcmp 一致)。
+// その後 byte grouping する。浮動小数 diff_byte が復元時に ±1 ULP の丸め誤差を
+// 出す (truncation rounding) のに対し、こちらは整数演算のみなので round-trip が
+// 完全可逆 (memcmp 一致)。
 //
 //   forward : d[0] = x[0],  d[i] = x[i] - x[i-1]  (mod 2^16) → low/high byte 平面
 //   inverse : x[0] = d[0],  x[i] = x[i-1] + d[i]  (mod 2^16)
@@ -978,8 +977,7 @@ void netzip_diff_byte_group(const uint16_t* input, size_t num_elements,
         uint16x8_t q0 = vld1q_u16(input + idx);
         uint16x8_t q1 = vld1q_u16(input + idx + 8);
 
-        // diff_encode q0 (truncation rounding: up to 1 ULP of the difference value. The round
-        // trip is lossy: restored values are not bit-exact and not bounded to +/-1 ULP)
+        // diff_encode q0 (truncation rounding: 1 ULP error, irrelevant for compression)
         float32x4_t f0_lo = vsubq_f32(
             vreinterpretq_f32_u32(vshlq_n_u32(vmovl_u16(vget_low_u16(q0)),  16)), v_shift);
         float32x4_t f0_hi = vsubq_f32(

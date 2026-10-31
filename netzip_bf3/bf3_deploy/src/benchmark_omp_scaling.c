@@ -4,8 +4,7 @@
 // restore) にどう効くかを定量化する。スレッド数 1,2,4,8,16 を振り、各フェーズの
 // 時間(ms)・スループット(GB/s)・speedup(p)=T(1)/T(p)・efficiency=speedup/p を測る。
 //
-//   主役構成: diff_byte + LZ4 (開発中に E2E で使っていた構成。diff_byte は非可逆で
-//             論文の評価対象外。論文の E2E は byte grouping + LZ4)
+//   主役構成: diff_byte + LZ4 (E2E で使う構成)
 //   対照構成: none(恒等) + Snappy (高スループットだが圧縮しない = スケールするが無意味)
 //
 // 計時: 各フェーズ独立 OMP 領域 (num_threads(p)) + clock_gettime(MONOTONIC),
@@ -155,7 +154,7 @@ int main(int argc,char**argv){
     printf("OMP_DYNAMIC=%d  max_threads=%d\n\n",omp_get_dynamic(),omp_get_max_threads());
 
     struct Conf { int pre,cod; const char*pname,*cname; } confs[] = {
-        { PRE_DIFF_BYTE, COD_LZ4,    "diff_byte", "lz4"    },  // 主役 (開発中の E2E 構成, lossy)
+        { PRE_DIFF_BYTE, COD_LZ4,    "diff_byte", "lz4"    },  // 主役 (E2E 構成)
         { PRE_NONE,      COD_SNAPPY, "none",      "snappy" },  // 対照 (スケールするが無圧縮)
     };
     int nconf=(int)(sizeof(confs)/sizeof(confs[0]));

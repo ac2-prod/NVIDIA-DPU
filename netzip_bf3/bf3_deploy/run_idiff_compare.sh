@@ -43,4 +43,4 @@ column -s, -t results_idiff_compare.csv | \
   awk 'NR==1{print;next}{print}' | cut -c1-160
 echo ""
 echo "判定: 全 idiff_byte 行が bit_exact=yes (mismatch_bytes=0) であること。"
-echo "      comp_ratio を diff_byte 行と比べる。"
+echo "      comp_ratio が diff_byte 比でどれだけ落ちるか確認 (1.9 前後維持なら採用)。"

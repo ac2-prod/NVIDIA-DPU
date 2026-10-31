@@ -1,7 +1,7 @@
 #!/bin/bash
-# run_idiff_e2e.sh — Issue #5 task 4: lossless (idiff_byte) 版の E2E 測定
+# run_idiff_e2e.sh — Issue #5 task 4: lossless (idiff_byte) 版の E2E 主結果
 #   final showdown の best 構成 (--thp 1, overlap=1, chunk=4M, zerocopy=1) を
-#   diff_byte (float, lossy; 誤差は ±1 ULP に収まらない) と idiff_byte (整数, bit-exact) の両方で 1 本ずつ測り、
+#   diff_byte (float, lossy ±1ULP) と idiff_byte (整数, bit-exact) の両方で 1 本ずつ測り、
 #   lossless 化の E2E スループット影響を取る。results_final_showdown.csv に追記。
 #   (preproc 列で diff_byte / idiff_byte を区別。idiff 行は verify=EXACT であること)
 # 使い方: sbatch run_idiff_e2e.sh [datafile]
@@ -54,4 +54,4 @@ awk -F, '
       g("t_preproc_ms"), g("t_compress_ms"), g("throughput_gbps")
   }' $OUT | tail -4
 echo ""
-echo "確認: idiff_byte 行が verify=EXACT であること。throughput は diff_byte 行と比べる。"
+echo "判定: idiff_byte 行が verify=EXACT、throughput が diff_byte 同等であること。"

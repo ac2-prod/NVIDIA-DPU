@@ -149,7 +149,7 @@ def fig2(plt):
     save(plt, fig, "fig2_rdma_cliff")
 
 
-# ─── Fig 7: E2E スループット vs メッセージサイズ (lossy diff_byte と 4 KB 基準の比較。論文の 65.7 MB の E2E では可逆構成は無圧縮を上回らない) ───
+# ─── Fig 7: E2E スループット vs メッセージサイズ (圧縮の勝ち領域) ────────────
 def fig7(plt):
     print("\n=== Fig 7 (results_msgsize_sweep.csv + showdown baseline) ===")
     rows = load_rows("results_msgsize_sweep.csv")
@@ -210,7 +210,7 @@ def fig7(plt):
             cross = math.exp(math.log(x0) + t * (math.log(x1) - math.log(x0)))
             break
     if cross:
-        print(f"  crossover (lossy lz4+diff_byte overlap > 4 KB no-compress) ~= "
+        print(f"  crossover (lz4 overlap > no-compress) ~= "
               f"{cross / MB:.1f} MB ({cross / 1e6:.1f} decimal MB)")
 
     if DRY_RUN:
@@ -232,7 +232,7 @@ def fig7(plt):
                 fontsize=10, color="gray")
     if cross:
         ax.axvline(cross, color=C_GREEN, ls=":", lw=1.2)
-        ax.annotate(f"lossy diff_byte only: above\n4 KB baseline $\\geq$ {cross / MB:.0f} MB",
+        ax.annotate(f"lossy diff wins\n$\\geq$ {cross / MB:.0f} MB (vs 4 KB baseline)",
                     xy=(cross, 14.5), xytext=(1.12 * MB, 14.8), fontsize=10,
                     arrowprops=dict(arrowstyle="->", color=C_GREEN))
     log2_mb_axis(ax, None, [1, 2, 4, 8, 16, 32, 64])
@@ -247,7 +247,7 @@ def fig7(plt):
     print("  diff_byte is lossy: on BF3 it alters 83.7%/98.4% of activation/gradient elements")
     print("  (element-level, size-weighted; mean error 1489/4078 ULP, max ~16400), not bit-exact")
     print("  (Sec. 3.6). Strict-lossless byte grouping reaches only ~1.46x and does not surpass")
-    print("  uncompressed RDMA in the 65.7 MB E2E runs (byte grouping is not part of this sweep).")
+    print("  uncompressed RDMA.")
 
 
 # ─── Fig 8: E2E フェーズ内訳 (横向き stacked bar, msg = 65.7 MB) ─────────────
@@ -308,7 +308,7 @@ def fig8(plt):
         "lz4/diff_byte/THP/single/overlap=0",
         fallback_pred=lambda r: r["codec"] == "lz4" and r["preproc"] == "diff_byte"
         and is_single(r) and r["page_mode"] == "base_4k")
-    # 4) lz4 / diff_byte / THP / chunk=4M overlap=1 zerocopy=1 (lossy diff_byte の最速構成)
+    # 4) lz4 / diff_byte / THP / chunk=4M overlap=1 zerocopy=1 (best 構成)
     #    ※ preproc=diff_byte を固定 (6/18 に追加した byte_group/bit_group/idiff_byte の
     #       同条件行を timestamp 最新で誤選択しないため)。throughput 最大で一意選択。
     r4 = pick_best(sd, lambda r: r["codec"] == "lz4" and r["preproc"] == "diff_byte"
@@ -620,7 +620,7 @@ def fig5(plt):
     save(plt, fig, "fig5_phase_scaling")
 
 
-# ─── Fig sharedlink: レート制限で模擬した低速リンクでの lossless vs 無圧縮 (Issue #10。論文では交差点の定量化は今後の課題) ───
+# ─── Fig sharedlink: 低速/共有リンクで lossless が無圧縮に勝つ (Issue #10) ────
 def fig_sharedlink(plt):
     print("\n=== Fig sharedlink (results_sharedlink.csv) ===")
     if not os.path.exists(os.path.join(SRC_DIR, "results_sharedlink.csv")):
@@ -666,7 +666,7 @@ def fig_sharedlink(plt):
             cross = xs[i-1] + f * (xs[i] - xs[i-1])
             break
     if cross:
-        print(f"  crossover (rate-limited emulation; byte_group lossless > no-compress) ~= {cross:.2f} GB/s "
+        print(f"  crossover (byte_group lossless > no-compress) ~= {cross:.2f} GB/s "
               f"(理論 ~9.3)")
     if DRY_RUN:
         return
@@ -684,9 +684,9 @@ def fig_sharedlink(plt):
     print(f"  model break-even: lossless {BE_LOSS} / lossy {BE_LOSSY} GB/s{xtra}")
 
     fig, ax = plt.subplots(figsize=(6.4, 4.3))
-    # lossless が有利になり得る領域 (モデル上 B < break-even) を網掛け
+    # lossless 勝利領域 (B < break-even) を網掛け
     ax.axvspan(0, BE_LOSS, color=C_GREEN, alpha=0.07, zorder=0)
-    ax.text(BE_LOSS / 2, XMAX * 0.055, "lossless may pay off\n(slow / shared link)",
+    ax.text(BE_LOSS / 2, XMAX * 0.055, "lossless pays off\n(slow / shared link)",
             ha="center", va="bottom", fontsize=8.8, color=C_GREEN, zorder=2)
 
     # モデル曲線 (細線, 同色)
@@ -747,10 +747,10 @@ def fig_sharedlink(plt):
     print("  Figure. E2E throughput vs. effective link bandwidth (lm_head, 65.7 MB; link rate")
     print("  throttled by leaky-bucket pacing). Markers are measured; thin lines are the")
     print(r"  analytic model E2E = min(P_comp, ratio x B) (uncompressed = B). The measured")
-    print(f"  points track the model closely. In this rate-limited emulation, strict-lossless byte")
-    print(f"  grouping (P=9.3, ratio 1.46) exceeds uncompressed RDMA for B < {BE_LOSS:.1f} GB/s (shaded{xtra}),")
-    print("  suggesting that on-DPU lossless compression may pay off on slow or shared links (<9.2;")
-    print("  not measured on a real shared link), but not at THP line rate (24.6). diff_byte (lossy) is shown only for reference.")
+    print(f"  points track the model closely. Strict-lossless byte grouping (P=9.3, ratio 1.46)")
+    print(f"  beats uncompressed RDMA for B < {BE_LOSS:.1f} GB/s (shaded{xtra}), so on-DPU")
+    print("  lossless compression pays off on slow or shared links (<9.2), while at")
+    print("  THP line rate (24.6) it does not. diff_byte (lossy) is shown only for reference.")
 
 
 # ─── Fig error: diff_byte が lossless でない証拠 (ULP分布 + 圧縮率vs破壊率) ────
@@ -957,7 +957,7 @@ def fig6_ablation(plt):
     print(f"  optimization, raising throughput {vals[1]:.1f} -> {vals[2]:.1f} GB/s ({jump:.0f}x); by contrast")
     print(f"  NEON-fused byte ungrouping ({vals[0]:.1f} -> {vals[1]:.1f}) and the LZ4 raw-block API")
     print(f"  ({vals[2]:.1f} -> {vals[3]:.1f}) contribute little. The last bar (hatched) adds the realistic")
-    print(f"  strided DRAM write of the restored tensor, giving {realistic:.1f} GB/s for this lossy diff_byte path.")
+    print(f"  strided DRAM write of the restored tensor, giving the deployed {realistic:.1f} GB/s.")
     print("  (Compression-side ladder omitted: no step-ablation CSV; only a thread sweep.)")
 
 

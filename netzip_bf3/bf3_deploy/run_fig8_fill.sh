@@ -1,7 +1,7 @@
 #!/bin/bash
 # run_fig8_fill.sh — Fig 8 バー③の欠測 1 条件だけを測定して
 #   results_final_showdown.csv に追記する:
-#     lz4+diff_byte (--preproc 未指定の既定。非可逆で論文の評価対象外), --thp 1, 一括 (chunk = msg = 65,667,072), overlap=0
+#     lz4+diff_byte, --thp 1, 一括 (chunk = msg = 65,667,072), overlap=0
 #   (全フェーズ直列の THP 版内訳。追記後に plot_paper_figs.py を再実行すると
 #    バー③が 4KB フォールバックから THP 行へ自動で差し替わる)
 # 使い方: sbatch run_fig8_fill.sh [datafile]

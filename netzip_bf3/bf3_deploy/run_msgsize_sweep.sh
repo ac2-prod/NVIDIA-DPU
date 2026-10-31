@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_msgsize_sweep.sh — 測定2: メッセージサイズ sweep (論文 Fig 2, 7 用)
-#   無圧縮 vs lz4+diff_byte (--preproc 未指定の既定。非可逆で論文の評価対象外) で 4K〜65.7MB を sweep し results_msgsize_sweep.csv に追記。
+#   無圧縮 vs lz4+diff_byte で 4K〜65.7MB を sweep し results_msgsize_sweep.csv に追記。
 #   全サイズ 0212_lm_head.pkl.bin の先頭 N バイトを使用 (データ特性を固定)。
 # 使い方: sbatch run_msgsize_sweep.sh [datafile]
 #SBATCH -p rome

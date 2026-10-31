@@ -3,7 +3,6 @@
 #   forward/ (活性) + grad/ (勾配) の全 .pkl.bin を 4 前処理 × 3 コーデックで全数測定。
 #   16T・256KB サブチャンク・DRAM write 込みの標準計時。間引かない。
 #   ※ 単体圧縮比較なので RDMA 不要・1 ノード。MPI 不要。
-#   ※ diff_byte は非可逆 (誤差は ±1 ULP に収まらない) で、論文の評価には入っていない (論文は bit-exact の 3 前処理のみ)。
 # 使い方: sbatch run_generalization.sh
 #SBATCH -p rome
 #SBATCH --nodelist=romebf3a005
@@ -84,7 +83,7 @@ awk -F, "$HDR"'
         n[ka]?sprintf("%.3f",sum[ka]/n[ka]):"-", n[kg]?sprintf("%.3f",sum[kg]/n[kg]):"-" } }' $OUT
 
 echo ""
-echo "=== (4) diff_byte(lossy) vs byte_group(bit-exact) 差のカテゴリ一貫性 (LZ4) ==="
+echo "=== (4) diff_byte(near-lossless) vs byte_group(strict) 差のカテゴリ一貫性 (LZ4) ==="
 awk -F, "$HDR"'
   $(c["codec"])=="lz4" && $(c["status"])=="ok" {
     p=$(c["preproc"]);

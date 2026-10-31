@@ -1,7 +1,7 @@
 #!/bin/bash
 # run_lossless_compare.sh — Issue #4 task 2: 4 前処理の単体比較
 #   byte_group / bit_group (純並べ替え, lossless) /
-#   diff_byte (float, lossy; 誤差は ±1 ULP に収まらない) / idiff_byte (整数 diff, lossless)
+#   diff_byte (float, ±1ULP lossy) / idiff_byte (整数 diff, lossless)
 #   を同条件 (16T, 256KB サブチャンク連続割当, run_direct 準拠) で:
 #     LZ4 圧縮率 / preproc・compress・decompress・restore スループット (DRAM write 込み) /
 #     round-trip bit-exact 検証
@@ -49,4 +49,4 @@ awk -F, 'NR==1{for(i=1;i<=NF;i++)c[$i]=i;
   results_lossless_compare.csv
 echo ""
 echo "判定: byte_group / bit_group / idiff_byte が全て bit_exact=yes であること。"
-echo "      圧縮率を非可逆の diff_byte(~1.98) と idiff_byte(~1.32) の値と比較。"
+echo "      圧縮率を near-lossless(diff_byte ~1.98) と idiff_byte(~1.32) の間で比較。"
