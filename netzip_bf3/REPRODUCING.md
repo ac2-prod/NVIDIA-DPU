@@ -410,6 +410,16 @@ file in this repository.
   `run_rdma_sanity.sh` and `run_final_showdown.sh` print this setting.
 - The paper's `osu_bw` numbers need the OSU Micro-Benchmarks, which are not
   part of this repository.
+- `netzip_bit_group` and `netzip_bit_group_serial` in `bf3_deploy/src/netzip.c`
+  assume that the number of elements N is a multiple of 8 (a size that is a
+  multiple of 16 bytes). For other N they write up to 16 × ceil(N/8) bytes,
+  which is more than the 2N-byte output buffer that `netzip.h` gives for
+  `netzip_bit_group`, and part of the output is not set to 0 before it is
+  written. The inverse functions `netzip_bit_ungroup` and
+  `netzip_bit_ungroup_serial` have the same requirement; for other N they read
+  up to 16 × ceil(N/8) bytes. The programs in this repository call these
+  functions only with sizes that meet this condition; it matters only if you
+  call them from your own code.
 
 ### Differences between the paper and this repository
 
@@ -421,7 +431,7 @@ file in this repository.
 | Cache eviction | Not mentioned | Last-level cache evicted before every iteration by default (`--flush-iter 1`), outside the timed window |
 | Chunking | The 65.7 MB buffer is divided into 4 MiB RDMA chunks (16 chunks in the main configuration) | In the recorded data, only the overlapped runs use 4 MiB chunks; the uncompressed and serial runs of Fig. 8 use one chunk of 65,667,072 bytes |
 | Preprocessing default | Byte grouping + LZ4 is the evaluated method | Default `--preproc` is the lossy `diff_byte`; `--preproc byte_group` must be given |
-| Default message size (comment) | — | The header comment of `benchmark_e2e_rdma.c` says the default is the file size; the code always uses 65667072 |
+| Default message size (comment) | — | The header comment of `benchmark_e2e_rdma.c` says that the default of `--msg-size` is the file size or 65667072; without `--msg-size`, the code always uses 65667072 |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` suggests that `make all` builds `benchmark_omp_scaling`; the `all` target does not include it, and the sources of `all` are missing |
 | `diff_byte` described as near-lossless | Not evaluated. The paper evaluates only bit-exact modes (byte grouping, bit grouping, and integer delta with byte grouping) | Comments and messages in `netzip.c`, `netzip.h`, `benchmark_e2e_rdma.c`, `benchmark_idiff_compare.c`, `benchmark_generalization.c`, `run_generalization.sh`, `run_idiff_e2e.sh`, `run_lossless_compare.sh`, `run_lossless_e2e.sh` and `MEASUREMENT_GUIDE_RDMA.md` describe the lossy `diff_byte` as having a "1 ULP" or "±1 ULP" error, or as "near-lossless". Section "§3.6" of `MEASUREMENT_GUIDE_RDMA.md` reports that the error of `diff_byte` is far beyond ±1 ULP; it describes these numbers as a preliminary measurement on x86 (scalar, round-to-nearest-even) and notes that the BF3 NEON path truncates and needs re-measurement |
 | Cause of the 4 KiB cliff | Related to address-translation granularity and consistent with RNIC-side address-translation pressure. MTT misses were not counted | `benchmark_e2e_rdma.c` and `MEASUREMENT_GUIDE_RDMA.md` state that the cause is NIC MTT misses. The messages of `rdma_sanity.c` treat recovery with huge pages as showing that the cause is NIC MTT misses |

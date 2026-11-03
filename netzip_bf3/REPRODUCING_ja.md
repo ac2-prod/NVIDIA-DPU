@@ -364,6 +364,12 @@ matplotlib を入れた Python が必要です。その図は主に非可逆の 
   そうでないと `page_mode` は `thp_no_2m` と記録されます。`[always]` のときは `--thp 0` のバッファにもヒュージページが
   使われ得ますが、プログラムは `base_4k` と記録します。`run_rdma_sanity.sh` と `run_final_showdown.sh` はこの設定を表示します。
 - 論文の `osu_bw` の数値には OSU Micro-Benchmarks が必要です。このリポジトリには含まれていません。
+- `bf3_deploy/src/netzip.c` の `netzip_bit_group` と `netzip_bit_group_serial` は、要素数 N が 8 の倍数
+  （大きさが 16 バイトの倍数）であることを前提にしています。それ以外の N では最大 16 × ceil(N/8) バイトまで書き込み、
+  `netzip.h` が `netzip_bit_group` について示す 2N バイトの出力バッファを超えます。その場合、出力の一部は書き込み前に 0 で消されません。
+  逆変換の `netzip_bit_ungroup` と `netzip_bit_ungroup_serial` も同じ前提で、それ以外の N では最大 16 × ceil(N/8) バイトまで読み込みます。
+  このリポジトリのプログラムは、条件を満たす大きさでしかこれらの関数を呼びません。
+  影響があるのは、自分のコードからこれらの関数を呼ぶ場合だけです。
 
 ### 論文とこのリポジトリの相違点
 
@@ -375,7 +381,7 @@ matplotlib を入れた Python が必要です。その図は主に非可逆の 
 | キャッシュの追い出し | 記載なし | 既定で各反復の前に最終レベルキャッシュを追い出します（`--flush-iter 1`、計時の外） |
 | チャンク分割 | 65.7 MB のバッファを 4 MiB の RDMA チャンクに分割（主構成では 16 チャンク） | 記録されたデータでは、4 MiB のチャンクを使うのは overlap の実行だけです。図 8 の無圧縮と逐次版の実行は、65,667,072 バイトの 1 チャンクです |
 | 前処理の既定値 | 評価した方式はバイトグループ化＋LZ4 | `--preproc` の既定値は非可逆の `diff_byte`。`--preproc byte_group` の指定が必要です |
-| メッセージサイズの既定値（コメント） | — | `benchmark_e2e_rdma.c` 冒頭のコメントには既定値がファイルサイズとありますが、コードは常に 65667072 を使います |
+| メッセージサイズの既定値（コメント） | — | `benchmark_e2e_rdma.c` 冒頭のコメントは `--msg-size` の既定値を「ファイルサイズ or 65667072」としていますが、`--msg-size` を省くと、コードは常に 65667072 を使います |
 | `make all` | — | `MEASUREMENT_GUIDE_RDMA.md` は `make all` で `benchmark_omp_scaling` がビルドされるように書いていますが、`all` ターゲットには含まれておらず、`all` のソースも不足しています |
 | `diff_byte` をほぼ可逆とする記述 | 評価していない。論文が評価するのは、ビットが完全に一致する方式（バイトグループ化、ビットグループ化、整数差分＋バイトグループ化）だけです | `netzip.c`、`netzip.h`、`benchmark_e2e_rdma.c`、`benchmark_idiff_compare.c`、`benchmark_generalization.c`、`run_generalization.sh`、`run_idiff_e2e.sh`、`run_lossless_compare.sh`、`run_lossless_e2e.sh`、`MEASUREMENT_GUIDE_RDMA.md` のコメントと表示文は、非可逆の `diff_byte` を、誤差が「1 ULP」や「±1 ULP」、あるいは「near-lossless」と書いています。`MEASUREMENT_GUIDE_RDMA.md` の「§3.6」の節は、`diff_byte` の誤差が ±1 ULP に全く収まらないと書いています。ただし同節はその数値を x86（スカラー、最近接偶数丸め）での予備測定とし、BF3 の NEON 経路は切り捨て丸めなので測り直しが必要と書いています |
 | 4 KiB の崖の原因 | アドレス変換の粒度と関係し、RNIC 側のアドレス変換の負荷と整合的。MTT ミスの回数は数えていません | `benchmark_e2e_rdma.c` と `MEASUREMENT_GUIDE_RDMA.md` は、原因を NIC の MTT ミスと書いています。`rdma_sanity.c` の表示文は、ヒュージページで回復すれば原因は NIC の MTT ミスである、と判定します |
