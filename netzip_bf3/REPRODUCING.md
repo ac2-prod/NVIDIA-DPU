@@ -8,8 +8,14 @@ a complete re-run. Paths are relative to `netzip_bf3/` unless stated
 otherwise.
 
 The commands and options below were checked against the source code and the
-scripts in this directory. They were not executed while this document was
-written, because no BlueField-3 hardware was available for that purpose.
+scripts in this directory. In addition, on 2026-11-03 the following were run
+from a fresh clone of commit `8509f51` on two BlueField-3 nodes of the cluster
+used for the paper: the build with `bf3_deploy/build_rdma.sh` (Section 4),
+`bf3_deploy/run_rdma_sanity.sh`, and the three example invocations for Fig. 8
+in Section 6.6, each with `--thp 0` and `--thp 1`. The Fig. 8 runs used the
+paper's input tensor, which is not included in this repository (Section 5).
+All of these runs completed, and every `benchmark_e2e_rdma` run reported
+`verify=EXACT`. The other commands in this document were not executed.
 
 ## 1. What can be reproduced from this repository
 
