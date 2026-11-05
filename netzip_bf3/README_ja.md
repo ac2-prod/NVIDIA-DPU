@@ -89,12 +89,12 @@ make rdma_sanity benchmark_e2e_rdma
 
 ## ライセンス
 
-- コードと文書：MIT License。[LICENSE](LICENSE) を参照してください。
-- [LICENSE-DATA.md](LICENSE-DATA.md) に記載したデータファイル（本研究で作成した実験データ・
-  測定結果）：CC BY 4.0。現時点では記載されたデータファイルはありません。
+- 独自のコードと文書：MIT License。[LICENSE](LICENSE) を参照してください。
+- 生の測定データは同梱していません。現在、[LICENSE-DATA.md](LICENSE-DATA.md) によって
+  CC BY 4.0 が適用されるファイルはリポジトリ内にありません。
 - 同梱した LZ4 と xxHash のファイルは、元の BSD 2-Clause License のままです。
-- `bf3_deploy/src/netzip.c` と `netzip.h` は NetZIP の前処理の変換を実装したもので、NetZIP アーティファクトの
-  MIT License も適用されます（[LICENSING.md](../LICENSING.md) を参照）。
+- `bf3_deploy/src/netzip.c` と `netzip.h` の NetZIP 由来部分には、元の
+  MIT License（Copyright (c) 2025 FAST Illinois Lab）が引き続き適用されます。
 
 リポジトリ全体の [LICENSING.md](../LICENSING.md) も参照してください。
 

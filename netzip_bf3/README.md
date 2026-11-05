@@ -97,14 +97,12 @@ used in the paper, the output format, and what is missing for a full re-run.
 
 ## License
 
-- Code and documentation: MIT License. See [LICENSE](LICENSE).
-- Data files listed in [LICENSE-DATA.md](LICENSE-DATA.md) (experimental data
-  and measurement results created in this study): CC BY 4.0. No data files
-  are listed at present.
+- Original code and documentation: MIT License. See [LICENSE](LICENSE).
+- No raw measurement data are included. [LICENSE-DATA.md](LICENSE-DATA.md)
+  does not currently apply CC BY 4.0 to any file in this repository.
 - Bundled LZ4 and xxHash files keep their own BSD 2-Clause License.
-- `bf3_deploy/src/netzip.c` and `netzip.h` implement the NetZIP preprocessing
-  transforms and are also subject to the MIT License of the NetZIP artifact
-  (see [LICENSING.md](../LICENSING.md)).
+- The NetZIP-derived portions of `bf3_deploy/src/netzip.c` and `netzip.h`
+  retain the upstream MIT License (Copyright (c) 2025 FAST Illinois Lab).
 
 See also the repository-level [LICENSING.md](../LICENSING.md).
 

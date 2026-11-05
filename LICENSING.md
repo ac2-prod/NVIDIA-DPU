@@ -12,8 +12,8 @@ the repository root.
 
 | Material | License | Details |
 |---|---|---|
-| Code and documentation written for this project: all files under `netzip_bf3/` except the third-party files listed below and the data files listed in `netzip_bf3/LICENSE-DATA.md` | MIT License | [`netzip_bf3/LICENSE`](netzip_bf3/LICENSE). For `netzip.c` and `netzip.h`, see also the NetZIP note below the table. |
-| Data files listed in `netzip_bf3/LICENSE-DATA.md` (experimental data and measurement results created in this study) | Creative Commons Attribution 4.0 International (CC BY 4.0) | [`netzip_bf3/LICENSE-DATA.md`](netzip_bf3/LICENSE-DATA.md). No data files are listed at present. |
+| Original code and documentation under `netzip_bf3/` | MIT License — Copyright (c) 2026 Taiga Kobayashi | [`netzip_bf3/LICENSE`](netzip_bf3/LICENSE). See below for portions derived from NetZIP. |
+| Raw experimental measurement data | None included. The data notice does not apply CC BY 4.0 to any file at present. | [`netzip_bf3/LICENSE-DATA.md`](netzip_bf3/LICENSE-DATA.md) |
 | Third-party code bundled in `netzip_bf3/bf3_deploy/src/`: `lz4.c`, `lz4.h`, `lz4frame.c`, `lz4frame.h`, `lz4hc.c`, `lz4hc.h` (LZ4 1.9.4, <https://github.com/lz4/lz4>) and `xxhash.c`, `xxhash.h` (xxHash 0.6.5, <https://github.com/Cyan4973/xxHash>) | Their original BSD 2-Clause License, as stated in the header of each file (Copyright Yann Collet). These files are not covered by the MIT License of this project. | File headers |
 
 `netzip_bf3/bf3_deploy/src/netzip.c` and `netzip.h` implement in C the
@@ -21,14 +21,14 @@ preprocessing transforms defined in [`compression_ratio_calculation.py`](https:/
 of the public artifact of NetZIP (J. Huang et al., MICRO 2025;
 <https://github.com/ece-fast-lab/MICRO-2025-NetZIP>). The artifact contains no C code; its
 transforms are written in Python. It is released under the MIT License
-(Copyright (c) 2025 FAST Illinois Lab). As a precaution, `netzip.c` and
-`netzip.h` are also subject to that license. Its copyright notice and
+(Copyright (c) 2025 FAST Illinois Lab). The portions ported from MICRO-2025-NetZIP retain that MIT License.
+Original porting code and modifications made for this project are covered by
+[the project MIT License](netzip_bf3/LICENSE). The upstream copyright notice and
 permission notice are reproduced in [NetZIP license notice](#netzip-license-notice)
 below. The optimized implementations in these files (the NEON and OpenMP code
 and the serial, fused and sub-chunked variants), the inverse transforms,
 `netzip_find_min` and the `idiff` transforms were written for this project.
-Apart from the bundled LZ4 and xxHash files, all other code under
-`netzip_bf3/` was also written for this project.
+Any other third-party material retains its original license or terms of use.
 
 Material that is used by the code but is not included in this repository:
 
@@ -40,7 +40,7 @@ Material that is used by the code but is not included in this repository:
   included. Regenerating them requires the model, which Meta distributes
   under its own license terms (<https://www.llama.com/llama3_2/license/>).
 - The preprocessing methods follow NetZIP (J. Huang et al., MICRO 2025). No
-  files of the NetZIP artifact are included in this repository. For
+  upstream Python source files are bundled here. For
   `netzip.c` and `netzip.h`, see the note above.
 
 ## 日本語
@@ -53,18 +53,18 @@ Material that is used by the code but is not included in this repository:
 
 | 対象 | ライセンス | 詳細 |
 |---|---|---|
-| 本プロジェクトのために作成したコードと文書：`netzip_bf3/` 以下の全ファイル（下記の第三者ファイルと `netzip_bf3/LICENSE-DATA.md` に記載したデータファイルを除く） | MIT License | [`netzip_bf3/LICENSE`](netzip_bf3/LICENSE)。`netzip.c` と `netzip.h` については、表の下の NetZIP の説明も参照してください。 |
-| `netzip_bf3/LICENSE-DATA.md` に記載したデータファイル（本研究で作成した実験データ・測定結果） | Creative Commons Attribution 4.0 International（CC BY 4.0） | [`netzip_bf3/LICENSE-DATA.md`](netzip_bf3/LICENSE-DATA.md)。現時点では記載されたデータファイルはありません。 |
+| `netzip_bf3/` の独自コードと文書 | MIT License — Copyright (c) 2026 Taiga Kobayashi | [`netzip_bf3/LICENSE`](netzip_bf3/LICENSE)。NetZIP 由来部分は下記を参照してください。 |
+| 生の実験測定データ | 現在は同梱していません。データに関するライセンス表記で CC BY 4.0 を適用しているファイルはありません。 | [`netzip_bf3/LICENSE-DATA.md`](netzip_bf3/LICENSE-DATA.md) |
 | `netzip_bf3/bf3_deploy/src/` に同梱した第三者コード：`lz4.c`、`lz4.h`、`lz4frame.c`、`lz4frame.h`、`lz4hc.c`、`lz4hc.h`（LZ4 1.9.4、<https://github.com/lz4/lz4>）と `xxhash.c`、`xxhash.h`（xxHash 0.6.5、<https://github.com/Cyan4973/xxHash>） | 各ファイル冒頭に記載された元の BSD 2-Clause License（Copyright Yann Collet）。本プロジェクトの MIT License の対象外です。 | 各ファイルの冒頭 |
 
 `netzip_bf3/bf3_deploy/src/netzip.c` と `netzip.h` は、NetZIP（J. Huang ほか、MICRO 2025）の公開アーティファクト
 （<https://github.com/ece-fast-lab/MICRO-2025-NetZIP>）の [`compression_ratio_calculation.py`](https://github.com/ece-fast-lab/MICRO-2025-NetZIP/blob/main/compression_ratio_calculation/compression_ratio_calculation.py) で
 定義された前処理の変換を C で実装したものです。同アーティファクトに C のコードはなく、変換は Python で書かれています。
-同アーティファクトは MIT License（Copyright (c) 2025 FAST Illinois Lab）で公開されています。念のため、`netzip.c` と
-`netzip.h` には同ライセンスも適用されます。その著作権表示と許諾文は、下の [NetZIP license notice](#netzip-license-notice)
+同アーティファクトは MIT License（Copyright (c) 2025 FAST Illinois Lab）で公開されています。MICRO-2025-NetZIP から移植した部分には元の MIT License が引き続き適用されます。
+本プロジェクト独自の移植コード・変更部分は[本プロジェクトの MIT License](netzip_bf3/LICENSE) の対象です。
+元の著作権表示と許諾文は、下の [NetZIP license notice](#netzip-license-notice)
 に記載しています。これらのファイルにある高速化した実装（NEON と OpenMP のコード、serial 版・融合版・サブチャンク版）、
-逆変換、`netzip_find_min`、`idiff` 変換は、本プロジェクトで作成したものです。同梱の LZ4 と xxHash のファイルを除き、
-`netzip_bf3/` のそれ以外のコードも本プロジェクトで作成したものです。
+逆変換、`netzip_find_min`、`idiff` 変換は、本プロジェクトで作成したものです。その他の第三者素材には、その素材の元のライセンスまたは利用条件が適用されます。
 
 コードで使用するものの、このリポジトリには含まれていないもの：
 
@@ -73,17 +73,17 @@ Material that is used by the code but is not included in this repository:
   それぞれのライセンスに従って入手してください。
 - Meta Llama 3.2 1B モデルから計算した入力テンソル。含まれていません。再生成にはモデルが必要で、
   モデルは Meta が独自のライセンス条件で配布しています（<https://www.llama.com/llama3_2/license/>）。
-- 前処理の手法は NetZIP（J. Huang ほか、MICRO 2025）に従っています。このリポジトリに同アーティファクトの
-  ファイルは含まれていません。`netzip.c` と `netzip.h` については、上の説明を参照してください。
+- 前処理の手法は NetZIP（J. Huang ほか、MICRO 2025）に従っています。元の Python ソースは
+  このリポジトリには同梱していません。`netzip.c` と `netzip.h` については、上の説明を参照してください。
 
 ## NetZIP license notice
 
-The following notice applies to `netzip_bf3/bf3_deploy/src/netzip.c` and
+The following notice applies to the NetZIP-derived portions of `netzip_bf3/bf3_deploy/src/netzip.c` and
 `netzip_bf3/bf3_deploy/src/netzip.h` (see above). It is reproduced from the
-LICENSE file of <https://github.com/ece-fast-lab/MICRO-2025-NetZIP>.
+[upstream LICENSE](https://github.com/ece-fast-lab/MICRO-2025-NetZIP/blob/main/LICENSE).
 
 以下は、上で説明したとおり `netzip_bf3/bf3_deploy/src/netzip.c` と `netzip_bf3/bf3_deploy/src/netzip.h` に
-適用される表示です。<https://github.com/ece-fast-lab/MICRO-2025-NetZIP> の LICENSE ファイルから写したものです。
+含まれる NetZIP 由来部分の表示です。[元の LICENSE ファイル](https://github.com/ece-fast-lab/MICRO-2025-NetZIP/blob/main/LICENSE)から写したものです。
 
 ```text
 MIT License
